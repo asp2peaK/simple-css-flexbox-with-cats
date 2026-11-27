@@ -14,6 +14,14 @@ func _ready() -> void:
 			Net.host()
 			Net.connect("peers_changed", Net, "start_shift", [], CONNECT_ONESHOT)
 			return
+		if a == "--fakesteam=host":
+			Game.tutorial_done = true
+			Net.steam_host()
+			Net.connect("peers_changed", Net, "start_shift", [], CONNECT_ONESHOT)
+			return
+		if a == "--fakesteam=join":
+			Net.call_deferred("steam_join", 109775240000000555)
+			return
 		if a.begins_with("--netjoin="):
 			Net.join(a.substr(10))
 			return
@@ -118,6 +126,11 @@ func _ready() -> void:
 	if Game.demo_over_pending:
 		Game.demo_over_pending = false
 		call_deferred("_demo_over")
+	# Steam-приглашения: «Присоединиться» в списке друзей / +connect_lobby
+	Net._hook_steam()
+	Net.connect("lobby_ready", self, "_on_lobby_ready")
+	if Net.pending_lobby != 0:
+		call_deferred("_on_lobby_ready")
 
 	var help := Label.new()
 	help.add_font_override("font", font_big)
@@ -130,7 +143,7 @@ func _ready() -> void:
 	fs.size = 9
 	help.add_font_override("font", fs)
 	add_child(help)
-	if not Game.splash_done and not "--menushot" in OS.get_cmdline_args() and not "--settingsshot" in OS.get_cmdline_args() and not "--demoshot" in OS.get_cmdline_args():
+	if not Game.splash_done and not "--menushot" in OS.get_cmdline_args() and not "--settingsshot" in OS.get_cmdline_args() and not "--demoshot" in OS.get_cmdline_args() and not "--coopshot" in OS.get_cmdline_args():
 		Game.splash_done = true
 		_studio_splash()
 	if Settings.reopen_settings:
@@ -161,6 +174,13 @@ func _ready() -> void:
 		var img3 := get_viewport().get_texture().get_data()
 		img3.flip_y()
 		img3.save_png(OS.get_environment("SHOT_DIR") + "/ach.png")
+		get_tree().quit()
+	if "--coopshot" in OS.get_cmdline_args():
+		_coop()
+		yield(get_tree().create_timer(1.0), "timeout")
+		var imgc := get_viewport().get_texture().get_data()
+		imgc.flip_y()
+		imgc.save_png(OS.get_environment("SHOT_DIR") + "/coop.png")
 		get_tree().quit()
 	if "--menushot" in OS.get_cmdline_args():
 		yield(get_tree().create_timer(1.0), "timeout")
@@ -285,16 +305,20 @@ var ip_edit: LineEdit
 var coop_status: Label
 var start_btn: Button
 var nick_edit: LineEdit
+var invite_btn: Button
+var friends_box: VBoxContainer
+var _friends_t := 0.0
 
 
 func _coop() -> void:
 	if coop_panel:
 		coop_panel.visible = true
+		_refresh_friends()
 		return
 	coop_panel = PanelContainer.new()
 	coop_panel.theme = load("res://scripts/ui_theme.gd").make()
-	coop_panel.rect_position = Vector2(150, 90)
-	coop_panel.rect_min_size = Vector2(340, 200)
+	coop_panel.rect_position = Vector2(120, 24)
+	coop_panel.rect_min_size = Vector2(400, 200)
 	add_child(coop_panel)
 	var v := VBoxContainer.new()
 	coop_panel.add_child(v)
@@ -317,36 +341,76 @@ func _coop() -> void:
 	nick_edit.add_font_override("font", font_big)
 	nick_edit.connect("text_changed", self, "_on_nick")
 	nr.add_child(nick_edit)
-	_button(v, tr("Создать игру (я хост)"), "_coop_host")
+	var fs: DynamicFont = font_big.duplicate()
+	fs.size = 11
+	if Net.has_steam():
+		var sl := Label.new()
+		sl.text = tr("Через Steam (без портов и IP)")
+		sl.add_font_override("font", fs)
+		sl.modulate = Color(1, 0.85, 0.4)
+		v.add_child(sl)
+		var sr := HBoxContainer.new()
+		v.add_child(sr)
+		_button(sr, tr("Создать лобби"), "_coop_steam_host")
+		invite_btn = _button(sr, tr("Пригласить друга"), "_coop_invite")
+		invite_btn.disabled = Net.lobby_id == 0
+		friends_box = VBoxContainer.new()
+		v.add_child(friends_box)
+		_refresh_friends()
+	var ll := Label.new()
+	ll.text = tr("По IP (локальная сеть или VPN)")
+	ll.add_font_override("font", fs)
+	ll.modulate = Color(1, 0.85, 0.4)
+	v.add_child(ll)
 	var row := HBoxContainer.new()
 	v.add_child(row)
 	ip_edit = LineEdit.new()
 	ip_edit.text = "127.0.0.1"
-	ip_edit.rect_min_size = Vector2(180, 0)
+	ip_edit.rect_min_size = Vector2(130, 0)
 	ip_edit.add_font_override("font", font_big)
 	row.add_child(ip_edit)
 	_button(row, tr("Подключиться"), "_coop_join")
+	_button(row, tr("Хост по IP"), "_coop_host")
 	coop_status = Label.new()
-	coop_status.add_font_override("font", font_big)
+	coop_status.add_font_override("font", fs)
 	coop_status.autowrap = true
-	coop_status.rect_min_size = Vector2(320, 40)
-	coop_status.text = tr("Хост делится своим IP. Нужен открытый порт %d (UDP) или общий VPN (Radmin VPN, Hamachi).") % Net.PORT
+	coop_status.rect_min_size = Vector2(380, 30)
+	if Net.has_steam():
+		coop_status.text = tr("Создай лобби и позови друга, или зайди к другу из списка. Друг может нажать «Присоединиться» в друзьях Steam.")
+	else:
+		coop_status.text = tr("Хост делится своим IP. Нужен открытый порт %d (UDP) или общий VPN (Radmin VPN, Hamachi).") % Net.PORT
 	v.add_child(coop_status)
-	start_btn = _button(v, tr("Начать смену"), "_coop_start")
-	start_btn.disabled = true
-	_button(v, tr("Назад"), "_coop_back")
+	var br := HBoxContainer.new()
+	br.alignment = BoxContainer.ALIGN_CENTER
+	v.add_child(br)
+	start_btn = _button(br, tr("Начать смену"), "_coop_start")
+	start_btn.disabled = not (Net.active and Net.is_host)
+	_button(br, tr("Назад"), "_coop_back")
 	Net.connect("status", self, "_on_net_status")
 	Net.connect("peers_changed", self, "_on_peers")
 
 
-func _coop_host() -> void:
+func _prepare_host() -> void:
 	if Net.active:
 		Net.leave()
 	if not Game.load_game():
 		Game.new_game()
 	Game.tutorial_done = true
+
+
+func _coop_host() -> void:
+	_prepare_host()
 	if Net.host() and start_btn:
 		start_btn.disabled = false  # можно начать и одному, друзья подключатся к следующей смене
+
+
+func _coop_steam_host() -> void:
+	_prepare_host()
+	Net.steam_host()
+
+
+func _coop_invite() -> void:
+	Net.invite()
 
 
 func _coop_join() -> void:
@@ -355,12 +419,47 @@ func _coop_join() -> void:
 	Net.join(ip_edit.text)
 
 
+func _coop_join_lobby(lid: int) -> void:
+	Net.steam_join(lid)
+
+
+func _on_lobby_ready() -> void:
+	if Net.pending_lobby != 0:
+		var lid := Net.pending_lobby
+		_coop()
+		Net.steam_join(lid)
+		return
+	if invite_btn:
+		invite_btn.disabled = Net.lobby_id == 0 or not Net.is_host
+	if start_btn:
+		start_btn.disabled = not Net.is_host
+	_refresh_friends()
+
+
+func _refresh_friends() -> void:
+	if friends_box == null:
+		return
+	for c in friends_box.get_children():
+		c.queue_free()
+	var list: Array = Net.friends_in_lobbies()
+	for i in min(list.size(), 3):
+		var b := Button.new()
+		b.text = tr("Зайти к %s") % list[i][0]
+		b.add_font_override("font", font_big)
+		b.connect("pressed", self, "_coop_join_lobby", [list[i][1]])
+		friends_box.add_child(b)
+
+
 func _coop_start() -> void:
 	Net.start_shift()
 
 
 func _coop_back() -> void:
 	Net.leave()
+	if invite_btn:
+		invite_btn.disabled = true
+	if start_btn:
+		start_btn.disabled = true
 	coop_panel.visible = false
 
 
@@ -408,6 +507,11 @@ func _input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	_lt += delta
+	if coop_panel and coop_panel.visible and friends_box and not Net.active:
+		_friends_t += delta
+		if _friends_t > 3.0:
+			_friends_t = 0.0
+			_refresh_friends()
 	if logo and _lt > 0.8:
 		logo.rect_rotation = sin(_lt * 1.6) * 1.5
 		var k := 1.0 + sin(_lt * 2.3) * 0.02
