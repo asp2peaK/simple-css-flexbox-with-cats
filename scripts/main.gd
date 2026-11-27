@@ -3960,7 +3960,7 @@ func _shotfix() -> void:
 		yield(get_tree().create_timer(1.0), "timeout")
 		print("cage: put back at ", cp.global_transform.origin, " inside=", cp in cage_area.get_overlapping_bodies())
 	if mirror:
-		Settings.look = {"nick": "2peaK", "race": "orc", "skin": 1, "apron": 1, "hat": "viking", "face": "scarf"}
+		Settings.look = {"nick": "2peaK", "race": "orc", "skin": 1, "apron": 1, "hat": "viking", "face": "glasses"}
 		Settings.owned.append("orc")
 		mirror.doll.set_look(Settings.look)
 		player.translation = Vector3(-1.0, 0.05, -3.4)
@@ -3975,8 +3975,9 @@ func _shotfix() -> void:
 		yield(get_tree().create_timer(0.4), "timeout")
 		_save(dir + "/fix_editor.png")
 		var k := 0
-		for lk in [{"race": "human", "hat": "wizard", "face": "glasses"}, {"race": "goblin", "hat": "cowboy", "face": "mustache"},
-				{"race": "orc", "hat": "headphones", "face": "sunglasses"}]:
+		for lk in [{"race": "human", "hat": "bandana", "face": "glasses"}, {"race": "goblin", "hat": "headphones", "face": "mustache"},
+				{"race": "orc", "hat": "wizard", "face": "eyepatch"}, {"race": "orc", "hat": "viking", "face": "bowtie"},
+				{"race": "human", "hat": "mouse_ears", "face": "mustache"}, {"race": "goblin", "hat": "viking", "face": "glasses"}]:
 			for key in lk:
 				mirror.edit[key] = lk[key]
 			mirror.view_i = k % 3

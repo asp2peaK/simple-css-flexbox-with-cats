@@ -2,7 +2,7 @@ extends Node
 # Состояние игры между сменами (автозагрузка Game): день, касса, улучшения, сохранение.
 
 const SAVE_PATH := "user://save.json"
-const VERSION := "0.10.1"
+const VERSION := "0.10.2"
 
 # id: [название, описание, макс. уровень, цены по уровням]
 const UPGRADES := {

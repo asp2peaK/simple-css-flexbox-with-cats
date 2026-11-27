@@ -99,6 +99,10 @@ func _process(_d: float) -> void:
 func open() -> void:
 	saved = Settings.look.duplicate()
 	edit = Settings.look.duplicate()
+	if not edit.get("face", "") in Doll.FACES:
+		edit["face"] = ""
+	if not edit.get("hat", "") in Doll.HATS:
+		edit["hat"] = ""
 	if panel:
 		panel.queue_free()
 	panel = PanelContainer.new()
