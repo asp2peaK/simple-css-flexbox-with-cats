@@ -122,6 +122,25 @@ func set_look(l: Dictionary) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_refresh(false)
+	_nudge()
+
+
+# слои в одной плоскости с телом спорят за глубину, и тело местами просвечивает сквозь шапку
+# (у орка — чёрный пучок волос сквозь шлем). Чуть выдвигаем слои к камере: на экране
+# они остаются на месте, но всегда оказываются ближе тела.
+func _nudge() -> void:
+	if not is_inside_tree():
+		return
+	var cam: Camera = view_cam if view_cam else get_viewport().get_camera()
+	if cam == null:
+		return
+	var d: Vector3 = cam.global_transform.origin - global_transform.origin
+	if d.length() < 0.01:
+		return
+	var dl: Vector3 = global_transform.basis.orthonormalized().xform_inv(d.normalized())
+	apron.translation = dl * 0.006
+	face.translation = dl * 0.012
+	hat.translation = dl * 0.018
 
 
 func _refresh(force: bool) -> void:
