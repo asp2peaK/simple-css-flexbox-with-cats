@@ -2,7 +2,19 @@ extends Node
 # Состояние игры между сменами (автозагрузка Game): день, касса, улучшения, сохранение.
 
 const SAVE_PATH := "user://save.json"
-const VERSION := "0.11.2"
+const VERSION := "0.12"
+# демоверсия: экспорт с фичей "demo" (пресеты "* Demo") или запуск с --demo
+const DEMO_DAYS := 3
+const STORE_APP_ID := 0  # App ID полной версии в Steam, когда появится
+var demo_over_pending := false
+
+
+func is_demo() -> bool:
+	return OS.has_feature("demo") or "--demo" in OS.get_cmdline_args()
+
+
+func demo_locked() -> bool:
+	return is_demo() and mode != "chaos" and day > DEMO_DAYS
 
 # id: [название, описание, макс. уровень, цены по уровням]
 const UPGRADES := {

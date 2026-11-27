@@ -106,6 +106,19 @@ func _ready() -> void:
 	_button(box, tr("Настройки"), "_settings")
 	_button(box, tr("Выход"), "_quit")
 
+	if Game.is_demo():
+		var dl := Label.new()
+		dl.text = tr("ДЕМОВЕРСИЯ")
+		dl.add_font_override("font", font_big)
+		dl.add_color_override("font_color", Color(1, 0.85, 0.3))
+		dl.align = Label.ALIGN_CENTER
+		dl.rect_position = Vector2(0, 112)
+		dl.rect_size = Vector2(640, 16)
+		add_child(dl)
+	if Game.demo_over_pending:
+		Game.demo_over_pending = false
+		call_deferred("_demo_over")
+
 	var help := Label.new()
 	help.add_font_override("font", font_big)
 	help.modulate = Color(1, 1, 1, 0.7)
@@ -117,7 +130,7 @@ func _ready() -> void:
 	fs.size = 9
 	help.add_font_override("font", fs)
 	add_child(help)
-	if not Game.splash_done and not "--menushot" in OS.get_cmdline_args() and not "--settingsshot" in OS.get_cmdline_args():
+	if not Game.splash_done and not "--menushot" in OS.get_cmdline_args() and not "--settingsshot" in OS.get_cmdline_args() and not "--demoshot" in OS.get_cmdline_args():
 		Game.splash_done = true
 		_studio_splash()
 	if Settings.reopen_settings:
@@ -130,6 +143,14 @@ func _ready() -> void:
 		var img2 := get_viewport().get_texture().get_data()
 		img2.flip_y()
 		img2.save_png(OS.get_environment("SHOT_DIR") + "/settings.png")
+		get_tree().quit()
+	if "--demoshot" in OS.get_cmdline_args():
+		yield(get_tree().create_timer(0.6), "timeout")
+		_demo_over()
+		yield(get_tree().create_timer(0.6), "timeout")
+		var img4 := get_viewport().get_texture().get_data()
+		img4.flip_y()
+		img4.save_png(OS.get_environment("SHOT_DIR") + "/demo.png")
 		get_tree().quit()
 	if "--achshot" in OS.get_cmdline_args():
 		Ach.unlock("ACH_FIRST_PARCEL")
@@ -180,7 +201,59 @@ func _settings() -> void:
 	add_child(sp)
 
 
+var demo_panel: Control
+
+
+func _demo_over() -> void:
+	if demo_panel and is_instance_valid(demo_panel):
+		demo_panel.queue_free()
+	var p := PanelContainer.new()
+	p.theme = load("res://scripts/ui_theme.gd").make()
+	p.rect_position = Vector2(110, 60)
+	p.rect_min_size = Vector2(420, 0)
+	var v := VBoxContainer.new()
+	p.add_child(v)
+	var t := Label.new()
+	t.text = tr("Демо пройдено!")
+	t.align = Label.ALIGN_CENTER
+	t.add_font_override("font", font_big)
+	load("res://scripts/ui_theme.gd").banner(t)
+	v.add_child(t)
+	var d := Label.new()
+	d.text = tr("Спасибо, что сыграл! В полной версии тебя ждут 30 смен, 6 районов, Тёмный Почтмейстер, сейф, новые клиенты и украшения. Добавь игру в желаемое в Steam, чтобы не пропустить выход.")
+	d.autowrap = true
+	d.add_font_override("font", Ach._plain(font_big))
+	d.rect_min_size = Vector2(400, 0)
+	d.add_color_override("font_color", Color(0.3, 0.18, 0.08))
+	v.add_child(d)
+	if Game.STORE_APP_ID > 0:
+		var b := Button.new()
+		b.text = tr("Открыть страницу в Steam")
+		b.add_font_override("font", font_big)
+		b.connect("pressed", self, "_open_store")
+		v.add_child(b)
+	var back := Button.new()
+	back.text = tr("В меню")
+	back.add_font_override("font", font_big)
+	back.connect("pressed", p, "queue_free")
+	v.add_child(back)
+	add_child(p)
+	demo_panel = p
+
+
+func _open_store() -> void:
+	if Ach.steam:
+		Ach.steam.activateGameOverlayToStore(Game.STORE_APP_ID, 0)
+	else:
+		OS.shell_open("https://store.steampowered.com/app/%d/" % Game.STORE_APP_ID)
+
+
 func _continue() -> void:
+	if Game.is_demo() and Game.has_save():
+		Game.load_game()
+		if Game.demo_locked():
+			_demo_over()
+			return
 	if Game.load_game():
 		Game.roll_event()
 		Game.phase = "closed"

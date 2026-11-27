@@ -64,6 +64,11 @@ func _init_steam() -> void:
 		return
 	steam = s
 	set_process(true)
+	# ник по умолчанию — из Steam (в зеркале его можно поменять)
+	if str(Settings.look.get("nick", "")).strip_edges() == "":
+		var pn: String = str(steam.getPersonaName()).strip_edges()
+		if pn != "":
+			Settings.look["nick"] = pn.substr(0, 16)
 	# то, что открыто раньше без Steam, тоже отправляем
 	for id in got.keys():
 		steam.setAchievement(id)

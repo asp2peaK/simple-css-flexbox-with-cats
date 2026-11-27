@@ -2124,6 +2124,12 @@ func _open_shop() -> void:
 	Game.roll_event()
 	Game.phase = "closed"
 	Game.save_game()
+	if Game.demo_locked() and not Net.active:
+		# демо закончилось: дальше только в полной версии
+		Game.demo_over_pending = true
+		get_tree().paused = false
+		get_tree().change_scene("res://menu.tscn")
+		return
 	if Net.active and Net.is_host:
 		Net.start_shift()
 		return
