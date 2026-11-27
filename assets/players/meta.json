@@ -1,0 +1,481 @@
+{
+ "human": {
+  "h": 94,
+  "w": 49,
+  "frames": {
+   "front_idle": {
+    "top": 2,
+    "neck": 28,
+    "cx": 23.6,
+    "w": 30
+   },
+   "front_walk": {
+    "top": 2,
+    "neck": 27,
+    "cx": 24.0,
+    "w": 30
+   },
+   "front_walk2": {
+    "top": 1,
+    "neck": 26,
+    "cx": 24.3,
+    "w": 30
+   },
+   "front_carry": {
+    "top": 2,
+    "neck": 27,
+    "cx": 24.1,
+    "w": 30
+   },
+   "side_idle": {
+    "top": 2,
+    "neck": 29,
+    "cx": 23.8,
+    "w": 31
+   },
+   "side_walk": {
+    "top": 3,
+    "neck": 30,
+    "cx": 22.6,
+    "w": 31
+   },
+   "side_walk2": {
+    "top": 2,
+    "neck": 29,
+    "cx": 24.2,
+    "w": 30
+   },
+   "side_carry": {
+    "top": 2,
+    "neck": 29,
+    "cx": 15.5,
+    "w": 31
+   },
+   "back_idle": {
+    "top": 2,
+    "neck": 27,
+    "cx": 23.2,
+    "w": 30
+   },
+   "back_walk": {
+    "top": 1,
+    "neck": 26,
+    "cx": 24.0,
+    "w": 30
+   },
+   "back_walk2": {
+    "top": 1,
+    "neck": 26,
+    "cx": 22.9,
+    "w": 30
+   },
+   "back_carry": {
+    "top": 1,
+    "neck": 26,
+    "cx": 23.6,
+    "w": 30
+   }
+  },
+  "skin_ref": [
+   248,
+   200,
+   152
+  ]
+ },
+ "goblin": {
+  "h": 86,
+  "w": 53,
+  "frames": {
+   "front_idle": {
+    "top": 6,
+    "neck": 31,
+    "cx": 25.7,
+    "w": 45
+   },
+   "front_walk": {
+    "top": 4,
+    "neck": 29,
+    "cx": 25.8,
+    "w": 45
+   },
+   "front_walk2": {
+    "top": 4,
+    "neck": 29,
+    "cx": 25.6,
+    "w": 45
+   },
+   "front_carry": {
+    "top": 6,
+    "neck": 31,
+    "cx": 25.6,
+    "w": 45
+   },
+   "side_idle": {
+    "top": 4,
+    "neck": 34,
+    "cx": 24.9,
+    "w": 38
+   },
+   "side_walk": {
+    "top": 5,
+    "neck": 35,
+    "cx": 23.9,
+    "w": 38
+   },
+   "side_walk2": {
+    "top": 3,
+    "neck": 33,
+    "cx": 26.1,
+    "w": 38
+   },
+   "side_carry": {
+    "top": 4,
+    "neck": 31,
+    "cx": 19.2,
+    "w": 39
+   },
+   "back_idle": {
+    "top": 3,
+    "neck": 27,
+    "cx": 25.4,
+    "w": 42
+   },
+   "back_walk": {
+    "top": 1,
+    "neck": 25,
+    "cx": 27.3,
+    "w": 42
+   },
+   "back_walk2": {
+    "top": 1,
+    "neck": 25,
+    "cx": 26.1,
+    "w": 43
+   },
+   "back_carry": {
+    "top": 3,
+    "neck": 27,
+    "cx": 26.2,
+    "w": 42
+   }
+  },
+  "skin_ref": [
+   168,
+   216,
+   72
+  ]
+ },
+ "orc": {
+  "h": 103,
+  "w": 75,
+  "frames": {
+   "front_idle": {
+    "top": 3,
+    "neck": 24,
+    "cx": 37.2,
+    "w": 30
+   },
+   "front_walk": {
+    "top": 3,
+    "neck": 23,
+    "cx": 37.6,
+    "w": 30
+   },
+   "front_walk2": {
+    "top": 3,
+    "neck": 24,
+    "cx": 37.9,
+    "w": 30
+   },
+   "front_carry": {
+    "top": 3,
+    "neck": 23,
+    "cx": 36.9,
+    "w": 30
+   },
+   "side_idle": {
+    "top": 2,
+    "neck": 17,
+    "cx": 36.5,
+    "w": 30
+   },
+   "side_walk": {
+    "top": 1,
+    "neck": 16,
+    "cx": 33.4,
+    "w": 30
+   },
+   "side_walk2": {
+    "top": 2,
+    "neck": 17,
+    "cx": 33.7,
+    "w": 30
+   },
+   "side_carry": {
+    "top": 2,
+    "neck": 17,
+    "cx": 23.2,
+    "w": 31
+   },
+   "back_idle": {
+    "top": 2,
+    "neck": 23,
+    "cx": 37.4,
+    "w": 30
+   },
+   "back_walk": {
+    "top": 2,
+    "neck": 23,
+    "cx": 38.6,
+    "w": 30
+   },
+   "back_walk2": {
+    "top": 2,
+    "neck": 23,
+    "cx": 38.0,
+    "w": 29
+   },
+   "back_carry": {
+    "top": 2,
+    "neck": 22,
+    "cx": 37.0,
+    "w": 29
+   }
+  },
+  "skin_ref": [
+   168,
+   184,
+   120
+  ]
+ },
+ "acc": {
+  "postal": {
+   "front": [
+    32,
+    20
+   ],
+   "side": [
+    32,
+    20
+   ],
+   "back": [
+    32,
+    20
+   ]
+  },
+  "wizard": {
+   "front": [
+    33,
+    29
+   ],
+   "side": [
+    32,
+    29
+   ],
+   "back": [
+    33,
+    30
+   ]
+  },
+  "crown": {
+   "front": [
+    22,
+    14
+   ],
+   "side": [
+    21,
+    15
+   ],
+   "back": [
+    22,
+    14
+   ]
+  },
+  "beanie": {
+   "front": [
+    30,
+    27
+   ],
+   "side": [
+    29,
+    28
+   ],
+   "back": [
+    30,
+    28
+   ]
+  },
+  "viking": {
+   "front": [
+    40,
+    28
+   ],
+   "side": [
+    33,
+    31
+   ],
+   "back": [
+    40,
+    25
+   ]
+  },
+  "chef": {
+   "front": [
+    32,
+    25
+   ],
+   "side": [
+    29,
+    25
+   ],
+   "back": [
+    32,
+    25
+   ]
+  },
+  "propeller": {
+   "front": [
+    30,
+    26
+   ],
+   "side": [
+    34,
+    25
+   ],
+   "back": [
+    30,
+    27
+   ]
+  },
+  "cowboy": {
+   "front": [
+    46,
+    27
+   ],
+   "side": [
+    46,
+    27
+   ],
+   "back": [
+    46,
+    29
+   ]
+  },
+  "bandana": {
+   "front": [
+    32,
+    22
+   ],
+   "side": [
+    33,
+    25
+   ],
+   "back": [
+    29,
+    25
+   ]
+  },
+  "headphones": {
+   "front": [
+    36,
+    27
+   ],
+   "side": [
+    20,
+    28
+   ],
+   "back": [
+    35,
+    27
+   ]
+  },
+  "flowers": {
+   "front": [
+    32,
+    17
+   ],
+   "side": [
+    32,
+    19
+   ],
+   "back": [
+    31,
+    14
+   ]
+  },
+  "mouse_ears": {
+   "front": [
+    34,
+    23
+   ],
+   "side": [
+    19,
+    27
+   ],
+   "back": [
+    35,
+    23
+   ]
+  },
+  "glasses": {
+   "front": [
+    26,
+    11
+   ],
+   "side": [
+    24,
+    12
+   ]
+  },
+  "sunglasses": {
+   "front": [
+    26,
+    9
+   ],
+   "side": [
+    23,
+    11
+   ]
+  },
+  "eyepatch": {
+   "front": [
+    26,
+    10
+   ],
+   "side": [
+    24,
+    11
+   ]
+  },
+  "mustache": {
+   "front": [
+    18,
+    7
+   ],
+   "side": [
+    12,
+    7
+   ]
+  },
+  "scarf": {
+   "front": [
+    34,
+    32
+   ],
+   "side": [
+    36,
+    30
+   ]
+  },
+  "bowtie": {
+   "front": [
+    14,
+    5
+   ],
+   "side": [
+    10,
+    6
+   ]
+  }
+ }
+}

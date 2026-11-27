@@ -10,7 +10,20 @@ var _rot := 0.0
 var _pitch := 0.0
 
 
+var doll = null
+var _prev := Vector3.ZERO
+
+
 func setup(id: int, n: int) -> void:
+	bubble_text = tr("Игрок %d") % (n + 1)
+	var Doll = load("res://scripts/paperdoll.gd")
+	if Doll.available():
+		# персонаж из слоёв; пока не пришёл внешний вид — человек с фартуком своего цвета
+		doll = Doll.new()
+		add_child(doll)
+		doll.set_look({"race": "human", "skin": 0, "apron": n % 8, "hat": "", "face": ""})
+		bubble_color = Color(1, 1, 1)
+		return
 	var col: Color = COLORS[n % COLORS.size()]
 	var m := SpatialMaterial.new()
 	m.albedo_color = col
@@ -57,6 +70,17 @@ func hold_point() -> Vector3:
 	return global_transform.origin + Vector3(0, 1.25, 0) + fwd * 1.1
 
 
+func set_look(l: Dictionary) -> void:
+	if doll:
+		doll.set_look(l)
+	var nick: String = l.get("nick", "")
+	if nick != "":
+		bubble_text = nick
+
+
 func _process(delta: float) -> void:
 	translation = translation.linear_interpolate(_to, min(1.0, 12.0 * delta))
+	if doll:
+		doll.walking = translation.distance_to(_prev) > 0.6 * delta
+		_prev = translation
 	rotation.y = lerp_angle(rotation.y, _rot, min(1.0, 12.0 * delta))

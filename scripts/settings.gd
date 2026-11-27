@@ -17,7 +17,10 @@ const DEFAULT_KEYS := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": K
 var keys := DEFAULT_KEYS.duplicate()
 var sharp := true  # чёткая картинка (рендер в размер окна) или пиксельная 640x360
 var lang := "ru"
-var reopen_settings := false  # после смены языка снова открыть настройки
+var reopen_settings := false
+# внешний вид игрока (зеркало) и купленные вещи — общие для всех режимов
+var look := {"nick": "", "race": "human", "skin": 0, "apron": 0, "hat": "", "face": ""}
+var owned := ["human", "postal", "beanie", "glasses"]  # после смены языка снова открыть настройки
 
 
 func _ready() -> void:
@@ -99,6 +102,8 @@ func save_cfg() -> void:
 	c.set_value("game", "lang", lang)
 	c.set_value("input", "sens", sens)
 	c.set_value("input", "keys", keys)
+	c.set_value("player", "look", look)
+	c.set_value("player", "owned", owned)
 	c.save(PATH)
 
 
@@ -114,6 +119,15 @@ func load_cfg() -> void:
 	sharp = c.get_value("video", "sharp", sharp)
 	lang = c.get_value("game", "lang", lang)
 	sens = c.get_value("input", "sens", sens)
+	var lk = c.get_value("player", "look", {})
+	if typeof(lk) == TYPE_DICTIONARY:
+		for key in lk:
+			look[key] = lk[key]
+	var ow = c.get_value("player", "owned", [])
+	if typeof(ow) == TYPE_ARRAY:
+		for it in ow:
+			if not it in owned:
+				owned.append(it)
 	var k = c.get_value("input", "keys", {})
 	if typeof(k) == TYPE_DICTIONARY:
 		for a in k:

@@ -27,9 +27,14 @@ const KINDS := {
 	"troll": ["Тролль-малыш", ["Хочу %s! ХОЧУ!", "Мама дала чек: %s", "%s! А это что за кнопка?"]],
 	"werewolf": ["Оборотень", ["Добрый день, я человек. %s", "Посылка %s. Ауу... то есть, алло", "Мой заказ %s, я точно не волк"]],
 	"giant": ["Ледяной великан", ["МНЕ %s. ХОЛОДНЫЙ.", "%s... НЕ РАСТОПИ.", "ВЕЛИКАН ЗАБРАТЬ %s"]],
+	"maga": ["Мага", ["Я за посылкой от Королевы Мышей. %s — розовая, с ушками, пищит!",
+		"Couldn't take the box out!.. Шучу. Мне %s", "Рошка или картошка? А пока дай %s",
+		"Полки по буквам? Я же говорил! Мне %s", "Пи-пи! Это не я пищу, это %s у тебя на складе",
+		"Маленькая, да удаленькая, как наша Королева. Заказ %s"]],
 }
 const SLOTS := [-3.0, 0.0, 3.0]  # места у стойки
 const KIND_HINTS := {
+	"maga": "Секретный гость! Его посылка М-01 розовая, с ушками и прячется на складе. Ищи по писку.",
 	"orc": "Орк уважает сильный бросок. Попадёшь в лицо — он только рад!",
 	"vampire": "Вампир не любит свет. Сбей коробкой фонарь над стойкой!",
 	"skeleton": "Скелет никуда не спешит: ждёт дольше всех.",
@@ -39,7 +44,7 @@ const KIND_HINTS := {
 	"witch": "Ведьма обожает проклятые посылки: за них доплачивает.",
 	"dragon": "Дракончик нетерпеливый: заждётся — подпалит стойку!",
 }
-const PATIENCE_MULT := {"skeleton": 1.4, "ghost": 1.8, "king": 0.7, "troll": 0.8, "giant": 1.2}
+const PATIENCE_MULT := {"maga": 2.5, "skeleton": 1.4, "ghost": 1.8, "king": 0.7, "troll": 0.8, "giant": 1.2}
 const EVENTS := {
 	"blackout": "СВЕТ ВЫРУБИЛИ! Ищи с фонариком. Вампиры в восторге.",
 	"rush": "ЧЁРНАЯ ПЯТНИЦА! Толпа клиентов, мало терпения, но платят в 1.5 раза больше.",
@@ -59,7 +64,7 @@ const PAY := {"chest": 12, "mimic": 8, "living": 6, "frozen": 10, "heavy": 5, "g
 const Career = preload("res://scripts/career.gd")
 const UiTheme = preload("res://scripts/ui_theme.gd")
 const SAFE := Vector3(6.45, 0, -0.95)
-const CAGE := Vector3(4.95, 0, -0.98)  # у стойки справа, не мешает ходить
+const CAGE := Vector3(-6.48, 0, -3.25)  # у левой стены между лентой портала и стеллажом
 
 var mats := {}
 var parcels := []
@@ -93,6 +98,12 @@ var flashlight: SpotLight
 var hits := 0
 var tut_step := -1  # 0-3 обучение в смене; 10 — «пункт закрыт», 11 — новый день
 var tut_arrow: Sprite3D
+var mirror
+var bell_rings := []  # время последних звонков (пасхалка)
+var maga_parcel = null
+var maga_c = null
+var maga_pending := false
+var _squeak_t := 0.0
 var hud_power: Label
 var hud_panel: PanelContainer
 var hud_panel_text: Label
@@ -206,12 +217,14 @@ func _ready() -> void:
 	if Net.active or Game.mode == "chaos":
 		Game.phase = "open"
 	_build_closed_props()
+	_build_mirror()
 	if Game.phase == "closed":
 		_enter_closed()
 	else:
 		_begin_shift()
 	if Net.active:
 		hud_event.text = (tr("ХОСТ") if Net.is_host else tr("КООП")) + tr(": игроков %d") % (Net.peers.size() + 1)
+		_send_look_later()
 
 	if Settings.reopen_settings:
 		Settings.reopen_settings = false
@@ -242,6 +255,8 @@ func _ready() -> void:
 		_relangtest()
 	if "--shotfix" in OS.get_cmdline_args():
 		_shotfix()
+	if "--test13" in OS.get_cmdline_args():
+		_test13()
 	if "--test12" in OS.get_cmdline_args():
 		_test12()
 
@@ -256,6 +271,10 @@ func _setup_input() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and mirror and mirror.is_open():
+		mirror.close()
+		get_tree().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_cancel") and board_open:
 		ui_click(event)
 		return
@@ -486,7 +505,6 @@ func _build_props() -> void:
 	alarm_bell = prop("bell_ring", Vector3(-6.84, 2.05, -0.8), PI / 2, 0.38)
 	deco(Vector3(0.04, 0.5, 0.36), Vector3(-6.88, 2.22, -0.8), mat("env_wood", 0.8, Color(0.5, 0.38, 0.3)))
 	prop("poster", Vector3(-2.5, 1.4, 4.88), PI, 0.8)
-	prop("mirror", Vector3(6.88, 1.0, -5.8), -PI / 2, 1.1)
 	if Game.lvl("expand") > 0:
 		prop("boxstack", Vector3(-6.2, 0.0, -10.2), 0, 0.9, true)
 	else:
@@ -1012,9 +1030,14 @@ func _spawn_customer() -> void:
 	for p in parcels:
 		if is_instance_valid(p) and not p.delivered and not p.stolen and not p.code in ordered:
 			avail.append(p)
+	if maga_parcel and is_instance_valid(maga_parcel):
+		avail.erase(maga_parcel)
 	var slot := _free_slot()
 	if slot < 0:
 		return
+	var maga_now: bool = maga_pending and maga_c == null and maga_parcel and is_instance_valid(maga_parcel)
+	if maga_now:
+		avail = [maga_parcel]
 	if avail.empty():
 		if incoming.empty() and customers.empty():
 			# посылки кончились: смена закончится
@@ -1033,6 +1056,8 @@ func _spawn_customer() -> void:
 	for a in OS.get_cmdline_args():
 		if a.begins_with("--kind=") and spawned == 1:
 			kind = a.substr(7)
+	if maga_now:
+		kind = "maga"
 	var p = pick(avail)
 	if kind == "giant":
 		# великан любит холодное
@@ -1064,6 +1089,12 @@ func _spawn_customer() -> void:
 		if c.scammer:
 			c.safe_pin = str(100 + randi() % 900)
 	c.mischief = rand_range(3.0, 5.0)
+	if maga_now:
+		c.scammer = false
+		c.fake = ""
+		c.receipt_code = p.code
+		c.grabber = false
+		maga_c = c
 	if is_boss:
 		c.scammer = false
 		c.fake = ""
@@ -1134,6 +1165,10 @@ func _on_customer_left(happy: bool, c) -> void:
 	if Net.active:
 		rpc("net_customer_leave", c.net_id, happy, c.bubble_text)
 	_drop_receipt(c)
+	if c == maga_c:
+		maga_pending = false
+		if happy:
+			_maga_reward()
 	if c.kicked:
 		pass  # штраф/награда уже посчитаны у кнопки
 	elif not happy and c.scammer:
@@ -2369,6 +2404,7 @@ func _process(_delta: float) -> void:
 	_update_decor(_delta)
 	_update_tutorial()
 	_update_tut_arrow()
+	_update_maga(_delta)
 	# подложки под текстом: только когда текст есть, высота по тексту
 	for l in [hud_tut, hud_center, hud_hint]:
 		l.visible = l.text != ""
@@ -2610,6 +2646,15 @@ func _read_board(_b) -> void:
 
 func _ring_desk(b) -> void:
 	Sfx.play_at("doorbell", b.global_transform.origin, 0.4, 2.0)
+	if not is_open and not Net.active and Game.mode == "career" and not maga_pending:
+		# пасхалка: 5 звонков подряд, пока закрыто
+		var now := OS.get_ticks_msec()
+		bell_rings.append(now)
+		while bell_rings.size() > 5:
+			bell_rings.pop_front()
+		if bell_rings.size() == 5 and now - int(bell_rings[0]) < 3500:
+			bell_rings.clear()
+			_maga_summon()
 	if not is_open or shift_over or net_client():
 		return
 	if customers.size() < Game.max_at_once() and spawned < total_customers:
@@ -2942,7 +2987,7 @@ func _build_cage() -> void:
 	m.flags_transparent = false
 	m.params_use_alpha_scissor = true
 	m.params_alpha_scissor_threshold = 0.5
-	var S := 1.0
+	var S := 0.74
 	var H := 0.42
 	for r in 4:
 		var ang: float = r * PI / 2
@@ -2977,6 +3022,8 @@ func _build_decor() -> void:
 	for id in Career.DECOR_ORDER:
 		if Game.decor.has(id):
 			_decor_item(id)
+	if Game.decor.has("mouse_queen") and ResourceLoader.exists("res://assets/props/mouse_plush.png"):
+		_decor_item("mouse_queen")
 
 
 # переставляемый декор: корень, который можно взять в режиме «закрыто»
@@ -3103,6 +3150,10 @@ func _decor_item(id: String) -> void:
 			gm.emission = Color(0.4, 0.28, 0.05)
 			deco(Vector3(14, 0.02, 0.92), Vector3(0, 1.005, 0), gm)
 			deco(Vector3(14, 0.08, 0.02), Vector3(0, 0.9, 0.41), gm)
+		"mouse_queen":
+			var r := _movable("mouse_queen", Vector3(-4.6, 0.98, 0.05))
+			_adopt(r, prop("mouse_plush", Vector3.ZERO, 0, 0.4, true))
+			_move_handle(r, Vector3(0.16, 0.2, 0.16), 0.2)
 		"trophy":
 			var r := _movable("trophy", Vector3(6.4, 0.98, 0.05))
 			if ResourceLoader.exists("res://assets/props/trophy.png"):
@@ -3867,8 +3918,15 @@ func _shotfix() -> void:
 		["sign", Vector3(-1.4, 0.05, -1.9), 0.0 + PI, 0.25],
 		["start", Vector3(0, 0.05, -3.0), 2.66, 0.15],
 		["shelves", Vector3(-4.0, 0.05, -1.6), 0.0, 0.12],
+		["mirror", Vector3(-1.0, 0.05, -3.4), 0.25, -0.05],
 		["cage", Vector3(3.0, 0.05, -2.8), -2.3, -0.45],
 	]
+	var D = load("res://scripts/paperdoll.gd").new()
+	add_child(D)
+	D.translation = Vector3(0.3, 0, -2.4)
+	D.rotation.y = PI
+	D.set_look({"race": "goblin", "skin": 0, "apron": 2, "hat": "cowboy", "face": "sunglasses"})
+	views.push_front(["doll", Vector3(0, 0.05, -0.7), 0.0, -0.2])
 	yield(get_tree().create_timer(1.5), "timeout")
 	for v in views:
 		player.translation = v[1]
@@ -3888,7 +3946,7 @@ func _shotfix() -> void:
 		cp.global_transform.origin = CAGE + Vector3(0, 0.3, 0)
 		cp.linear_velocity = Vector3.ZERO
 		yield(get_tree().create_timer(1.0), "timeout")
-		player.global_transform.origin = CAGE + Vector3(-1.3, 0.05, -0.3)
+		player.global_transform.origin = CAGE + Vector3(1.3, 0.05, 0.3)
 		player.look_at(CAGE + Vector3(0, 0.05, 0), Vector3.UP)
 		player.rotation.x = 0
 		player.rotation.z = 0
@@ -3901,6 +3959,22 @@ func _shotfix() -> void:
 		player.release(false)
 		yield(get_tree().create_timer(1.0), "timeout")
 		print("cage: put back at ", cp.global_transform.origin, " inside=", cp in cage_area.get_overlapping_bodies())
+	if mirror:
+		Settings.look = {"nick": "2peaK", "race": "orc", "skin": 1, "apron": 1, "hat": "viking", "face": "scarf"}
+		Settings.owned.append("orc")
+		mirror.doll.set_look(Settings.look)
+		player.translation = Vector3(-1.0, 0.05, -3.4)
+		player.rotation.y = 0.25
+		player.cam.rotation.x = -0.05
+		yield(get_tree().create_timer(0.6), "timeout")
+		_save(dir + "/fix_mirror2.png")
+		var vimg: Image = mirror.vp.get_texture().get_data()
+		vimg.save_png(dir + "/fix_mirror_vp.png")
+		print("mirror cam ", mirror.cam.global_transform.origin, " doll=", mirror.doll.global_transform.origin, " vis=", mirror.doll.body.visible, " tex=", mirror.doll.body.texture)
+		mirror.open()
+		yield(get_tree().create_timer(0.4), "timeout")
+		_save(dir + "/fix_editor.png")
+		mirror.close()
 	_open_laptop(null)
 	var ev := InputEventAction.new()
 	ev.action = "ui_cancel"
@@ -3949,3 +4023,139 @@ func _update_tut_arrow() -> void:
 	if tut_arrow:
 		var b: Vector3 = tut_arrow.get_meta("base")
 		tut_arrow.translation = b + Vector3(0, abs(sin(OS.get_ticks_msec() / 250.0)) * 0.12, 0)
+
+
+# ---------------------------------------------------------------- зеркало и внешность игрока
+func _build_mirror() -> void:
+	if not ResourceLoader.exists("res://assets/props/mirror.png") or not load("res://scripts/paperdoll.gd").available():
+		return
+	mirror = load("res://scripts/mirror.gd").new()
+	var z := -10.82 if Game.lvl("expand") > 0 else -5.42
+	mirror.translation = Vector3(-1.35, 0, z)
+	add_child(mirror)
+	mirror.build(self)
+
+
+func _open_mirror(_b) -> void:
+	if carrying or player.held or shift_over:
+		return
+	mirror.open()
+
+
+func _send_look() -> void:
+	if Net.active:
+		rpc("net_look", Settings.look)
+
+
+remote func net_look(l: Dictionary) -> void:
+	var id := get_tree().get_rpc_sender_id()
+	var av = _avatar(id)
+	if av.has_method("set_look"):
+		av.set_look(l)
+
+
+func _send_look_later() -> void:
+	# всем рассказываем, как выглядим (несколько раз: вдруг кто-то ещё грузится)
+	for k in 3:
+		yield(get_tree().create_timer(1.0 + k * 2.0), "timeout")
+		_send_look()
+
+
+# ---------------------------------------------------------------- пасхалка «Мага-тестировщик»
+func _maga_summon() -> void:
+	if not ResourceLoader.exists("res://assets/chars/maga_idle.png"):
+		return
+	maga_pending = true
+	Sfx.play("squeak", 0.05, 0.0)
+	# розовая вспышка
+	var fl := ColorRect.new()
+	fl.color = Color(1.0, 0.45, 0.75, 0.45)
+	fl.anchor_right = 1
+	fl.anchor_bottom = 1
+	fl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_center.get_parent().add_child(fl)
+	var tw := create_tween()
+	tw.tween_property(fl, "color:a", 0.0, 1.2)
+	tw.tween_callback(fl, "queue_free")
+	# по залу пробегает мышка в короне
+	var ms := Sprite3D.new()
+	ms.texture = tex("props/mouse_run0", false)
+	ms.pixel_size = 0.3 / ms.texture.get_height()
+	ms.billboard = SpatialMaterial.BILLBOARD_FIXED_Y
+	ms.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+	ms.translation = Vector3(4.5, 0.16, -2.4)
+	add_child(ms)
+	var tm := create_tween()
+	tm.tween_property(ms, "translation:x", -4.5, 2.4)
+	tm.tween_callback(ms, "queue_free")
+	# посылка Королевы прячется в дальнем углу склада
+	var Parcel = load("res://scripts/parcel.gd")
+	var p = Parcel.new()
+	var bx := "boxes_en/box_maga" if Settings.lang == "en" else "boxes/box_maga"
+	p.setup("М-01", false, Vector3(0.38, 0.38, 0.38), tex(bx, false))
+	p.box_type = "living"
+	var spot := Vector3(6.4, 0.4, -9.6) if Game.lvl("expand") > 0 else Vector3(6.4, 0.4, -5.1)
+	p.translation = spot
+	p.home = spot
+	p.sorted = true
+	add_child(p)
+	parcels.append(p)
+	maga_parcel = p
+	_flash(tr("Пи-пи! Кто-то пищит на складе... Открывай пункт!"), 3.0)
+
+
+func _update_maga(delta: float) -> void:
+	if maga_parcel == null or not is_instance_valid(maga_parcel) or maga_parcel.delivered or maga_parcel.held:
+		return
+	_squeak_t -= delta
+	if _squeak_t <= 0.0 and player and player.global_transform.origin.distance_to(maga_parcel.global_transform.origin) < 4.5:
+		_squeak_t = 2.5
+		Sfx.play_at("squeak", maga_parcel.global_transform.origin, 0.1, 0.0)
+
+
+func _maga_reward() -> void:
+	Game.tokens += 5
+	if not "mouse_ears" in Settings.owned:
+		Settings.owned.append("mouse_ears")
+	Game.decor["mouse_queen"] = true
+	if not "secret_maga" in Game.seen_kinds:
+		Game.seen_kinds.append("secret_maga")
+	Settings.save_cfg()
+	Game.save_game()
+	Sfx.play("squeak", 0.0, 0.0)
+	_flash(tr("СЕКРЕТ НАЙДЕН: «Друг студии»!\n+5 жетонов, мышиные ушки в зеркале и Королева Мышей на стойку."), 6.0)
+	if ResourceLoader.exists("res://assets/ui/medal_maga.png"):
+		var md := TextureRect.new()
+		md.texture = load("res://assets/ui/medal_maga.png")
+		md.rect_position = Vector2(296, 150)
+		md.rect_scale = Vector2(1.2, 1.2)
+		hud_center.get_parent().add_child(md)
+		var tw := create_tween()
+		tw.tween_interval(4.0)
+		tw.tween_property(md, "modulate:a", 0.0, 1.0)
+		tw.tween_callback(md, "queue_free")
+
+
+func _test13() -> void:
+	# пасхалка: 5 звонков пока закрыто -> Мага приходит первым, выдаём М-01 -> награда
+	yield(get_tree().create_timer(1.5), "timeout")
+	var bell: Spatial = null
+	for ch in get_children():
+		if ch is Sprite3D and ch.texture and ch.texture.resource_path.find("desk_bell") >= 0:
+			bell = ch
+	for k in 5:
+		_ring_desk(bell)
+	print("maga pending=", maga_pending, " parcel=", maga_parcel != null)
+	_flip_sign(null)
+	yield(get_tree().create_timer(9.0), "timeout")
+	print("first customer=", customers[0].kind if not customers.empty() else "none", " order=", customers[0].order if not customers.empty() else "")
+	_save(OS.get_environment("SHOT_DIR") + "/t13_maga.png")
+	if maga_c and is_instance_valid(maga_c):
+		var cx: float = maga_c.global_transform.origin.x
+		maga_parcel.global_transform.origin = Vector3(cx + 0.3, 1.4, 0)
+		maga_parcel.linear_velocity = Vector3.ZERO
+		maga_parcel.sleeping = false
+		yield(get_tree().create_timer(4.0), "timeout")
+	print("reward: ears=", "mouse_ears" in Settings.owned, " plush=", Game.decor.has("mouse_queen"), " tokens=", Game.tokens)
+	_save(OS.get_environment("SHOT_DIR") + "/t13_reward.png")
+	get_tree().quit()

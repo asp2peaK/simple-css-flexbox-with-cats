@@ -184,6 +184,7 @@ var coop_panel: PanelContainer
 var ip_edit: LineEdit
 var coop_status: Label
 var start_btn: Button
+var nick_edit: LineEdit
 
 
 func _coop() -> void:
@@ -202,6 +203,20 @@ func _coop() -> void:
 	t.align = Label.ALIGN_CENTER
 	t.text = tr("ИГРА С ДРУЗЬЯМИ (до 4 человек, бета)")
 	v.add_child(t)
+	var nr := HBoxContainer.new()
+	v.add_child(nr)
+	var nl := Label.new()
+	nl.text = tr("Твой ник  ")
+	nl.add_font_override("font", font_big)
+	nr.add_child(nl)
+	nick_edit = LineEdit.new()
+	nick_edit.text = Settings.look.get("nick", "")
+	nick_edit.placeholder_text = tr("Игрок")
+	nick_edit.max_length = 16
+	nick_edit.rect_min_size = Vector2(180, 0)
+	nick_edit.add_font_override("font", font_big)
+	nick_edit.connect("text_changed", self, "_on_nick")
+	nr.add_child(nick_edit)
 	_button(v, tr("Создать игру (я хост)"), "_coop_host")
 	var row := HBoxContainer.new()
 	v.add_child(row)
@@ -230,7 +245,8 @@ func _coop_host() -> void:
 	if not Game.load_game():
 		Game.new_game()
 	Game.tutorial_done = true
-	Net.host()
+	if Net.host() and start_btn:
+		start_btn.disabled = false  # можно начать и одному, друзья подключатся к следующей смене
 
 
 func _coop_join() -> void:
@@ -255,7 +271,7 @@ func _on_net_status(t: String) -> void:
 
 func _on_peers() -> void:
 	if start_btn:
-		start_btn.disabled = not (Net.is_host and not Net.peers.empty())
+		start_btn.disabled = not Net.is_host
 
 
 
@@ -296,3 +312,8 @@ func _process(delta: float) -> void:
 		logo.rect_rotation = sin(_lt * 1.6) * 1.5
 		var k := 1.0 + sin(_lt * 2.3) * 0.02
 		logo.rect_scale = Vector2(k, k)
+
+
+func _on_nick(t: String) -> void:
+	Settings.look["nick"] = t.strip_edges()
+	Settings.save_cfg()

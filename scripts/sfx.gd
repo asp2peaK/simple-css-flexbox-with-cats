@@ -1,7 +1,7 @@
 extends Node
 # Звуки (автозагрузка Sfx). Все звуки синтезированы tools/synth_sfx.py — наши собственные.
 
-const NAMES := ["thud1", "thud2", "thud3", "pickup", "whoosh", "bonk", "coin", "doorbell", "reject",
+const NAMES := ["squeak", "thud1", "thud2", "thud3", "pickup", "whoosh", "bonk", "coin", "doorbell", "reject",
 	"boing", "boom", "crack", "step1", "step2", "shift_end", "ambient", "music_game", "music_menu",
 	"voice_witch", "voice_orc", "voice_skeleton", "voice_goblin",
 	"angry_witch", "angry_orc", "angry_skeleton", "angry_goblin",
