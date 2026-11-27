@@ -34,6 +34,7 @@ func build(m) -> void:
 	fr.pixel_size = H / t.get_height()
 	fr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 	fr.translation = Vector3(0, H / 2.0, 0)
+	fr.layers = 4  # рамку камера зеркала не видит
 	add_child(fr)
 	main._clickable(fr, Vector3(0.53, 1.15, 0.06), tr("[ЛКМ/E] Зеркало: сменить внешность"), "_open_mirror")
 	vp = Viewport.new()
@@ -87,12 +88,19 @@ func _process(_d: float) -> void:
 	if not near:
 		return
 	var E2: Vector3 = E - 2.0 * d * n
-	# камера за зеркалом смотрит на центр стекла; угол обзора — ровно на стекло
-	var dist: float = (C - E2).length()
-	cam.global_transform = Transform(Basis(), E2).looking_at(C, Vector3.UP)
-	var c: float = abs(n.dot((C - E2).normalized()))
-	var nr: float = dist - 0.5 * max(GH, GW) * sqrt(max(0.0, 1.0 - c * c)) + 0.02
-	cam.set_perspective(clamp(rad2deg(2.0 * atan(GH * 0.5 / dist)), 5.0, 120.0), max(0.05, nr), 40.0)
+	# камера за зеркалом смотрит перпендикулярно стеклу, а несимметричный frustum
+	# вырезает ровно прямоугольник стекла: картинка ложится на стекло без искажений,
+	# а ближняя плоскость совпадает со стеклом и стена за зеркалом не попадает в кадр
+	var b: Basis = global_transform.basis.orthonormalized().rotated(Vector3.UP, PI)
+	cam.global_transform = Transform(b, E2)
+	var rel: Vector3 = C - E2
+	var depth: float = rel.dot(n)
+	var nr: float = max(0.02, depth - 0.02)
+	var k: float = nr / depth
+	var ox: float = rel.dot(b.x) * k
+	var oy: float = rel.dot(b.y) * k
+	cam.keep_aspect = Camera.KEEP_WIDTH
+	cam.set_frustum(GW * k, Vector2(ox, oy), nr, 40.0)
 
 
 # ---------------------------------------------------------------- редактор
