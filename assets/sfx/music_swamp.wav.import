@@ -1,0 +1,23 @@
+[remap]
+
+importer="wav"
+type="AudioStreamSample"
+path="res://.import/music_swamp.wav-4f680c9e99e1e2e581a921bb8ecf1b98.sample"
+
+[deps]
+
+source_file="res://assets/sfx/music_swamp.wav"
+dest_files=[ "res://.import/music_swamp.wav-4f680c9e99e1e2e581a921bb8ecf1b98.sample" ]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=0

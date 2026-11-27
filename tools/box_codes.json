@@ -1,0 +1,146 @@
+[
+{
+"code": "В-20",
+"type": "cursed"
+},
+{
+"code": "Г-84",
+"type": "cursed"
+},
+{
+"code": "А-10",
+"type": "cursed"
+},
+{
+"code": "М-69",
+"type": "cursed"
+},
+{
+"code": "А-47",
+"type": "explosive"
+},
+{
+"code": "Д-08",
+"type": "explosive"
+},
+{
+"code": "Д-28",
+"type": "explosive"
+},
+{
+"code": "А-12",
+"type": "heavy"
+},
+{
+"code": "Г-54",
+"type": "heavy"
+},
+{
+"code": "А-31",
+"type": "heavy"
+},
+{
+"code": "А-71",
+"type": "gift"
+},
+{
+"code": "Г-08",
+"type": "gift"
+},
+{
+"code": "М-73",
+"type": "gift"
+},
+{
+"code": "А-29",
+"type": "fragile"
+},
+{
+"code": "К-81",
+"type": "fragile"
+},
+{
+"code": "Д-75",
+"type": "fragile"
+},
+{
+"code": "Г-07",
+"type": "normal"
+},
+{
+"code": "Б-06",
+"type": "normal"
+},
+{
+"code": "Д-18",
+"type": "normal"
+},
+{
+"code": "В-54",
+"type": "normal"
+},
+{
+"code": "Б-70",
+"type": "normal"
+},
+{
+"code": "А-74",
+"type": "normal"
+},
+{
+"code": "В-72",
+"type": "normal"
+},
+{
+"code": "М-88",
+"type": "normal"
+},
+{
+"code": "Г-72",
+"type": "mimic"
+},
+{
+"code": "М-60",
+"type": "mimic"
+},
+{
+"code": "Г-66",
+"type": "timer"
+},
+{
+"code": "М-76",
+"type": "timer"
+},
+{
+"code": "Б-24",
+"type": "chest"
+},
+{
+"code": "М-66",
+"type": "chest"
+},
+{
+"code": "Г-81",
+"type": "frozen"
+},
+{
+"code": "Д-24",
+"type": "frozen"
+},
+{
+"code": "А-58",
+"type": "living"
+},
+{
+"code": "В-19",
+"type": "living"
+},
+{
+"code": "А-69",
+"type": "normal"
+},
+{
+"code": "М-89",
+"type": "normal"
+}
+]

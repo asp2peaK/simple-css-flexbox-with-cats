@@ -1,0 +1,23 @@
+[remap]
+
+importer="wav"
+type="AudioStreamSample"
+path="res://.import/angry_witch.wav-73db69d3fa448f350da3f3a1043e32b2.sample"
+
+[deps]
+
+source_file="res://assets/sfx/angry_witch.wav"
+dest_files=[ "res://.import/angry_witch.wav-73db69d3fa448f350da3f3a1043e32b2.sample" ]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=0

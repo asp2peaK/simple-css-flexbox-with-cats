@@ -1,0 +1,23 @@
+[remap]
+
+importer="wav"
+type="AudioStreamSample"
+path="res://.import/angry_werewolf.wav-a4de6f6779a93a5a9cf4d5af870c8791.sample"
+
+[deps]
+
+source_file="res://assets/sfx/angry_werewolf.wav"
+dest_files=[ "res://.import/angry_werewolf.wav-a4de6f6779a93a5a9cf4d5af870c8791.sample" ]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=0
