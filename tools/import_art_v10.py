@@ -90,19 +90,34 @@ def detect_skin(fr, race):
     return keys[np.argmax(counts)]
 
 
-def is_skin(f, ref):
-    rgb = f[..., :3].astype(int)
-    # оттенок близок к коже: отношения каналов как у ref, яркость может отличаться (тень)
-    s = rgb.sum(2) + 1
-    rs = ref.sum() + 1
-    d = np.abs(rgb[..., 0] / s - ref[0] / rs) + np.abs(rgb[..., 1] / s - ref[1] / rs) + np.abs(rgb[..., 2] / s - ref[2] / rs)
-    bright = (s > rs * 0.45) & (s < rs * 1.35)
-    return (d < 0.06) & bright & (f[..., 3] > 0)
+def _hsv(rgb):
+    """rgb uint (…,3) -> h(0..360), s, v (0..1)"""
+    c = rgb.astype(float) / 255.0
+    mx = c.max(-1); mn = c.min(-1); d = mx - mn + 1e-9
+    r, g, b = c[..., 0], c[..., 1], c[..., 2]
+    h = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) * 60.0
+    return h, (mx - mn) / (mx + 1e-9), mx
+
+
+# допуск по оттенку, насыщенности и яркости для кожи каждой расы
+SKIN_TOL = {"human": (16, 0.12, 0.72, 0.55), "goblin": (32, 0.25, 1.0, 0.22), "orc": (30, 0.12, 0.75, 0.22)}
+
+
+def is_skin(f, ref, race="human"):
+    h, sat, v = _hsv(f[..., :3])
+    rh, rs, rv = [float(x.ravel()[0]) for x in _hsv(np.array(ref, dtype=np.uint8).reshape(1, 3))]
+    dh, smin, smax, vmin = SKIN_TOL[race]
+    dhue = np.abs((h - rh + 180) % 360 - 180)
+    m = (dhue < dh) & (sat > smin) & (sat < smax) & (v > vmin) & (f[..., 3] > 0)
+    if race == "human":
+        m &= v > rv * 0.6  # волосы того же оттенка, но темнее
+    return m
 
 
 def is_apron(f):
-    r, g, b = [f[..., i].astype(int) for i in range(3)]
-    return (g > 120) & (b > 120) & (r < 120) & (b - r > 80) & (f[..., 3] > 0)
+    # бирюзовый фартук вместе с тёмными краями (иначе в игре остаётся бирюзовая кайма)
+    h, sat, v = _hsv(f[..., :3])
+    return (h > 165) & (h < 205) & (sat > 0.35) & (v > 0.18) & (f[..., 3] > 0)
 
 
 def head_info(f):
@@ -131,7 +146,7 @@ def players(meta):
             name = "%s_%s" % (VIEWS[i // 4], POSES[i % 4])
             meta[race]["frames"][name] = head_info(f)
             ap = is_apron(f)
-            sk = is_skin(f, ref)
+            sk = is_skin(f, ref, race)
             # слой фартука: серый по яркости, красится в игре
             apron = np.zeros_like(f)
             lum = f[..., :3].astype(float).mean(2)
@@ -142,7 +157,10 @@ def players(meta):
                 out = f.copy()
                 out[ap] = 0
                 if si > 0:
-                    k = f[..., :3].astype(float)[sk] / np.maximum(1, ref.astype(float))
+                    # перекраска по яркости: светлые места светлее, тени темнее, оттенок целиком новый
+                    lum = f[..., :3].astype(float)[sk] @ np.array([0.3, 0.59, 0.11])
+                    rl = float(np.dot(ref.astype(float), [0.3, 0.59, 0.11]))
+                    k = (lum / max(1.0, rl))[:, None]
                     out[sk, :3] = np.clip(k * np.array(tgt, float), 0, 255).astype(np.uint8)
                 save(out, "players/%s_%d_%s.png" % (race, si, name))
         meta[race]["skin_ref"] = [int(v) for v in ref]
@@ -155,6 +173,9 @@ FACE = ["glasses", "sunglasses", "eyepatch", "mustache", "scarf", "bowtie"]
 HAT_W = {"postal": 1.05, "wizard": 1.1, "crown": 0.75, "beanie": 1.0, "viking": 1.35, "chef": 1.05,
          "propeller": 1.0, "cowboy": 1.55, "bandana": 1.05, "headphones": 1.2, "flowers": 1.05, "mouse_ears": 1.15}
 FACE_W = {"glasses": 0.85, "sunglasses": 0.85, "eyepatch": 0.85, "mustache": 0.6, "scarf": 1.15, "bowtie": 0.45}
+
+
+RACE_ACC = {"goblin": (0.9, 1.0), "orc": (0.85, 0.88)}
 
 
 def accessories(meta, head_w):
@@ -170,6 +191,10 @@ def accessories(meta, head_w):
                 scale = head_w * wf / (fb[2] - fb[0])
                 f = crop_scaled(a, b, scale)
                 save(f, "acc/%s_%s.png" % (name, VIEWS[vi]))
+                # отдельные версии под гоблина и орка: рисуем сразу нужного размера, чтобы пиксели не плыли в игре
+                for race, (hk, fk) in RACE_ACC.items():
+                    k2 = hk if name in HAT_W else fk
+                    save(crop_scaled(a, b, scale * k2), "acc/%s/%s_%s.png" % (race, name, VIEWS[vi]))
                 acc.setdefault(name, {})[VIEWS[vi]] = [int(f.shape[1]), int(f.shape[0])]
     meta["acc"] = acc
 

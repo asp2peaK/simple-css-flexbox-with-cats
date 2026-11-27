@@ -102,6 +102,7 @@ func _ready() -> void:
 	if Game.chaos_best > 0:
 		ch.text = tr("Режим хаоса") + " (" + tr("рекорд") + " %d)" % Game.chaos_best
 	_button(box, tr("Играть с друзьями"), "_coop")
+	_button(box, tr("Достижения"), "_achievements")
 	_button(box, tr("Настройки"), "_settings")
 	_button(box, tr("Выход"), "_quit")
 
@@ -130,6 +131,16 @@ func _ready() -> void:
 		img2.flip_y()
 		img2.save_png(OS.get_environment("SHOT_DIR") + "/settings.png")
 		get_tree().quit()
+	if "--achshot" in OS.get_cmdline_args():
+		Ach.unlock("ACH_FIRST_PARCEL")
+		Ach.unlock("ACH_MAGA")
+		yield(get_tree().create_timer(0.6), "timeout")
+		_achievements()
+		yield(get_tree().create_timer(0.8), "timeout")
+		var img3 := get_viewport().get_texture().get_data()
+		img3.flip_y()
+		img3.save_png(OS.get_environment("SHOT_DIR") + "/ach.png")
+		get_tree().quit()
 	if "--menushot" in OS.get_cmdline_args():
 		yield(get_tree().create_timer(1.0), "timeout")
 		var img := get_viewport().get_texture().get_data()
@@ -145,6 +156,22 @@ func _button(parent: Control, text: String, target: String) -> Button:
 	b.connect("pressed", self, target)
 	parent.add_child(b)
 	return b
+
+
+var ach_panel: Control
+
+
+func _achievements() -> void:
+	if ach_panel and is_instance_valid(ach_panel):
+		ach_panel.queue_free()
+	ach_panel = Ach.build_panel(font_big)
+	var back := Button.new()
+	back.text = tr("Назад")
+	back.add_font_override("font", font_big)
+	back.connect("pressed", ach_panel, "queue_free")
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	ach_panel.get_child(0).add_child(back)
+	add_child(ach_panel)
 
 
 func _settings() -> void:

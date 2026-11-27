@@ -21,9 +21,9 @@ const PRICE := {"postal": 0, "beanie": 0, "chef": 40, "bandana": 40, "propeller"
 	"glasses": 0, "bowtie": 25, "eyepatch": 30, "scarf": 40, "mustache": 40, "sunglasses": 50}
 # посадка вещей: для каждой расы и вида — строки (в пикселях от верха головы кадра) низа шапки, глаз, рта, шеи,
 # масштаб шапок hs и лицевых вещей fs, сдвиги по x для вида сбоку (подобрано по сетке «все расы × все вещи»)
-const FIT := {"human": {"front": {"hat": 12, "hs": 1.0, "eye": 17, "mouth": 21, "neck": 26, "fs": 1.0}, "side": {"hat": 12, "hs": 1.0, "eye": 16, "mouth": 21, "neck": 26, "fs": 1.0, "dx_eye": 3, "dx_mouth": 6, "dx_neck": 2, "fx_eye": 11, "fx_mouth": 11, "fx_neck": 7}, "back": {"hat": 12, "hs": 1.0, "eye": 17, "mouth": 21, "neck": 25, "fs": 1.0}}, "goblin": {"front": {"hat": 10, "hs": 0.9, "eye": 14, "mouth": 22, "neck": 26, "fs": 1.0}, "side": {"hat": 11, "hs": 0.9, "eye": 15, "mouth": 23, "neck": 27, "fs": 1.0, "dx_eye": 4, "dx_mouth": 4, "dx_neck": 1, "fx_eye": 12, "fx_mouth": 13, "fx_neck": 8}, "back": {"hat": 13, "hs": 0.9, "eye": 17, "mouth": 25, "neck": 29, "fs": 1.0}}, "orc": {"front": {"hat": 12, "hs": 0.85, "eye": 18, "mouth": 23, "neck": 28, "fs": 0.88}, "side": {"hat": 11, "hs": 0.85, "eye": 19, "mouth": 23, "neck": 27, "fs": 0.88, "hx": 6, "dx_eye": 9, "dx_mouth": 13, "dx_neck": 5, "fx_eye": 16, "fx_mouth": 17, "fx_neck": 12}, "back": {"hat": 12, "hs": 0.85, "eye": 17, "mouth": 23, "neck": 28, "fs": 0.88}}}
+const FIT := {"human": {"front": {"hat": 12, "hs": 1.0, "eye": 17, "mouth": 21, "neck": 26, "fs": 1.0}, "side": {"hat": 12, "hs": 1.0, "eye": 16, "mouth": 21, "neck": 26, "fs": 1.0, "dx_eye": 3, "dx_mouth": 6, "dx_neck": 2, "fx_eye": 11, "fx_mouth": 11, "fx_neck": 7}, "back": {"hat": 12, "hs": 1.0, "eye": 17, "mouth": 21, "neck": 25, "fs": 1.0}}, "goblin": {"front": {"hat": 10, "hs": 1.0, "eye": 14, "mouth": 22, "neck": 26, "fs": 1.0}, "side": {"hat": 11, "hs": 1.0, "eye": 15, "mouth": 23, "neck": 27, "fs": 1.0, "dx_eye": 4, "dx_mouth": 4, "dx_neck": 1, "fx_eye": 12, "fx_mouth": 13, "fx_neck": 8}, "back": {"hat": 13, "hs": 1.0, "eye": 17, "mouth": 25, "neck": 29, "fs": 1.0}}, "orc": {"front": {"hat": 12, "hs": 1.0, "eye": 18, "mouth": 23, "neck": 28, "fs": 1.0}, "side": {"hat": 11, "hs": 1.0, "eye": 19, "mouth": 23, "neck": 27, "fs": 1.0, "hx": 6, "dx_eye": 9, "dx_mouth": 13, "dx_neck": 5, "fx_eye": 16, "fx_mouth": 17, "fx_neck": 12}, "back": {"hat": 12, "hs": 1.0, "eye": 17, "mouth": 23, "neck": 28, "fs": 1.0}}}
 # точечные поправки «раса/вид/вещь» (или «*/вид/вещь»): [сдвиг x, сдвиг y, масштаб]
-const OVER := {"*/side/headphones": [0, 6, 1.0], "human/side/headphones": [-2, 6, 1.0], "goblin/side/headphones": [-6, 7, 1.0], "orc/side/headphones": [0, 7, 1.0], "*/side/bandana": [2, 2, 1.0], "*/front/bandana": [0, 1, 1.0], "*/back/bandana": [0, 1, 1.0], "*/side/mouse_ears": [2, 1, 1.0], "*/side/bowtie": [-1, 2, 1.0], "*/front/bowtie": [0, 1, 1.0]}
+const OVER := {"*/side/headphones": [0, 6, 1.0], "human/side/headphones": [-2, 6, 1.0], "goblin/side/headphones": [-6, 7, 1.0], "orc/side/headphones": [0, 7, 1.0], "*/side/bandana": [2, 2, 1.0], "*/front/bandana": [0, 1, 1.0], "*/back/bandana": [0, 1, 1.0], "*/side/mouse_ears": [2, 1, 1.0], "*/side/bowtie": [-1, 2, 1.0], "*/front/bowtie": [0, 1, 1.0], "orc/front/bandana": [0, 3, 1.0], "orc/back/bandana": [0, 2, 1.0], "orc/side/bandana": [2, 3, 1.0]}
 const FACE_ROW := {"glasses": "eye", "sunglasses": "eye", "eyepatch": "eye", "mustache": "mouth", "scarf": "neck", "bowtie": "neck"}
 const ITEM_SC := {"scarf": 0.7}
 const ITEM_DY := {"headphones": 5, "viking": -2}
@@ -58,6 +58,12 @@ static func face_cx(fit: Dictionary, row: String, view: String, t: Texture, sc: 
 	if view == "side" and fit.has("fx_" + row) and t:
 		return fit["fx_" + row] - t.get_width() * sc / 2.0
 	return fit.get("dx_" + row, 0.0)
+
+
+# у гоблина и орка свои версии вещей, нарисованные сразу нужного размера
+static func acc_tex(race: String, id: String, view: String) -> Texture:
+	var t := tex("res://assets/acc/%s/%s_%s.png" % [race, id, view])
+	return t if t else tex("res://assets/acc/%s_%s.png" % [id, view])
 
 
 static func owns(id: String) -> bool:
@@ -180,7 +186,7 @@ func _refresh(force: bool) -> void:
 	var row: String = FACE_ROW.get(f, "eye")
 	var fo: Array = over(race, view, f)
 	var fsc: float = fit["fs"] * ITEM_SC.get(f, 1.0) * fo[2]
-	var ft: Texture = tex("res://assets/acc/%s_%s.png" % [f, view]) if f != "" else null
+	var ft: Texture = acc_tex(race, f, view) if f != "" else null
 	_place(face, f, view, flip, fsc, cx + (face_cx(fit, row, view, ft, fsc) + fo[0]) * sg, H - (top + fit[row] + fo[1]), "center")
 
 
@@ -188,7 +194,7 @@ func _place(s: Sprite3D, id: String, view: String, flip: bool, sc: float, cx: fl
 	if id == "":
 		s.visible = false
 		return
-	var t := tex("res://assets/acc/%s_%s.png" % [id, view])
+	var t := acc_tex(look.get("race", "human"), id, view)
 	if t == null:
 		s.visible = false
 		return
@@ -240,7 +246,7 @@ static func preview_into(box: Control, l: Dictionary, view: String, zoom: float)
 	if view == "back" or not face_id in FACES:
 		face_id = ""
 	if face_id != "":
-		var ft := tex("res://assets/acc/%s_%s.png" % [face_id, view])
+		var ft := acc_tex(race, face_id, view)
 		if ft:
 			var row: String = FACE_ROW.get(face_id, "eye")
 			var fo: Array = over(race, view, face_id)
@@ -253,7 +259,7 @@ static func preview_into(box: Control, l: Dictionary, view: String, zoom: float)
 			layers.append([ft, fp, fs, Color(1, 1, 1)])
 	var hat_id: String = l.get("hat", "")
 	if hat_id != "":
-		var ht := tex("res://assets/acc/%s_%s.png" % [hat_id, view])
+		var ht := acc_tex(race, hat_id, view)
 		if ht:
 			var ho: Array = over(race, view, hat_id)
 			var hs: float = fit["hs"] * ITEM_SC.get(hat_id, 1.0) * ho[2]
@@ -271,8 +277,8 @@ static func preview_into(box: Control, l: Dictionary, view: String, zoom: float)
 	var bw: float = box.rect_min_size.x
 	var bh: float = box.rect_min_size.y
 	var z: float = min(zoom, min((bw - 6.0) / r.size.x, (bh - 6.0) / r.size.y))
-	if z > 1.0:
-		z = floor(z * 4.0) / 4.0
+	# только целый масштаб: экран 640×360 растягивается целиком, дробный масштаб делает пиксели кривыми
+	z = max(1.0, floor(z))
 	var o := Vector2(bw / 2.0 - (r.position.x + r.size.x / 2.0) * z, bh - 3.0 - (r.position.y + r.size.y) * z)
 	for L in layers:
 		if L[0] == null:

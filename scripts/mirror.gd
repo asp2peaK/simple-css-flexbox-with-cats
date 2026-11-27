@@ -108,7 +108,7 @@ func open() -> void:
 	panel = PanelContainer.new()
 	panel.theme = load("res://scripts/ui_theme.gd").make()
 	panel.pause_mode = Node.PAUSE_MODE_PROCESS
-	panel.rect_position = Vector2(40, 22)
+	panel.rect_position = Vector2(40, 4)
 	panel.rect_min_size = Vector2(420, 300)
 	main.pause_panel.get_parent().add_child(panel)
 	var font: Font = main.font_big.duplicate()
@@ -127,7 +127,7 @@ func open() -> void:
 	var left := VBoxContainer.new()
 	h.add_child(left)
 	preview = Control.new()
-	preview.rect_min_size = Vector2(130, 200)
+	preview.rect_min_size = Vector2(160, 252)
 	preview.rect_clip_content = true
 	left.add_child(preview)
 	var rot := Button.new()
@@ -286,6 +286,13 @@ func _buy() -> void:
 		return
 	Game.bank -= pr
 	Settings.owned.append(lk)
+	Ach.unlock("ACH_MIRROR")
+	var all_hats := true
+	for h in Doll.HATS:
+		if h != "" and Doll.PRICE.get(h, 0) > 0 and not h in Settings.owned:
+			all_hats = false
+	if all_hats:
+		Ach.unlock("ACH_ALL_HATS")
 	Game.save_game()
 	Settings.save_cfg()
 	Sfx.play("coin", 0.0, -4.0)

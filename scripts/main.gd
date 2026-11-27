@@ -231,6 +231,11 @@ func _ready() -> void:
 		call_deferred("_reopen_settings")
 	if "--shot" in OS.get_cmdline_args():
 		_screenshot_mode()
+	for a in OS.get_cmdline_args():
+		if a.begins_with("--showcase="):
+			var sc = load("res://scripts/showcase.gd").new()
+			add_child(sc)
+			sc.run(self, a.substr(11))
 	if "--test2" in OS.get_cmdline_args():
 		_test2()
 	if "--test3" in OS.get_cmdline_args():
@@ -1276,6 +1281,7 @@ func _press_kick(btn) -> void:
 		return
 	if c.scammer:
 		stat("scam")
+		Ach.add("kicked")
 		money += 15
 		_flash(tr("Мошенник разоблачён! +15 монет"), 2.5)
 		c.leave_kicked(tr("Р-р-р... Ладно, ухожу!"))
@@ -1455,6 +1461,7 @@ func _physics_process(delta: float) -> void:
 func _on_face_hit(c) -> void:
 	c.on_hit()
 	hits += 1
+	Ach.unlock("ACH_FACE_HIT")
 	stat("orc_hit" if c.kind == "orc" else "hit")
 	if Game.event == "inspector":
 		money = int(max(0, money - 15))
@@ -1624,6 +1631,11 @@ func _deliver(p, c, penalty: int) -> void:
 	earned = int(max(1, earned))
 	money += earned
 	served += 1
+	Ach.add("delivered")
+	if c.max_patience - c.patience < 5.0:
+		Ach.unlock("ACH_FAST")
+	if Game.mode == "career" and Game.bank + money >= 2000:
+		Ach.unlock("ACH_BANK_2000")
 	if broken != "":
 		stat("broken")
 	else:
@@ -1689,6 +1701,8 @@ func _end_shift() -> void:
 		Game.end_chaos(score)
 		chaos_over = true
 		txt = tr("ХАОС ОКОНЧЕН\n\nВыдано: %d из %d\nЗлых клиентов: %d\nСчёт: %d\nРекорд: %d") % [served, spawned, failed, score, Game.chaos_best]
+		if score >= 1500:
+			Ach.unlock("ACH_CHAOS_1500")
 		if score > best_before:
 			txt += "\n\n" + tr("НОВЫЙ РЕКОРД!")
 		end_buttons.get_child(0).text = tr("Ещё раз")
@@ -1725,6 +1739,16 @@ func _end_shift() -> void:
 		var rep_before := Game.rep
 		var closed := Game.add_rep(drep)
 		var beaten: bool = Game.is_boss_day() and boss != null and boss_left <= 0
+		if beaten:
+			Ach.unlock("ACH_BOSS")
+		if failed == 0 and served >= 5:
+			Ach.unlock("ACH_NO_COMPLAINTS")
+		if Game.rep >= 100:
+			Ach.unlock("ACH_REP_100")
+		if not Game.tasks.empty() and done_n == Game.tasks.size():
+			Ach.unlock("ACH_ALL_TASKS")
+		if Game.bank + money >= 2000:
+			Ach.unlock("ACH_BANK_2000")
 		txt = tr("СМЕНА %d ОКОНЧЕНА\n\nВыдано: %d из %d\nЗлых клиентов: %d\nЗаработано: %d монет\nВсего в кассе: %d\nРейтинг: %s\nРепутация: %d → %d\nЖетоны: %d") % [Game.day, served, spawned, failed, money, Game.bank + money, rating, rep_before, Game.rep, Game.tokens]
 		if closed:
 			no_day_inc = true
@@ -1745,6 +1769,7 @@ func _end_shift() -> void:
 	hud_panel_side.text = PoolStringArray(side).join("\n")
 	hud_panel.visible = true
 	if Net.active:
+		Ach.unlock("ACH_COOP")
 		rpc("net_end_shift", txt)
 
 
@@ -1840,6 +1865,7 @@ func _update_warehouse() -> void:
 			p.sorted = true
 			money += 2
 			stat("sort")
+			Ach.add("sorted")
 			Sfx.play("coin", 0.1, -10.0)
 			_flash(tr("Разложено по букве: +2"), 1.2)
 			_tip("sort")
@@ -1857,6 +1883,8 @@ func _update_warehouse() -> void:
 		for b in cage_area.get_overlapping_bodies():
 			if b.is_in_group("parcel") and b.box_type in ["living", "mimic", "cursed"]:
 				b.calm = max(b.calm, 1.0)
+				if b.box_type != "cursed" and not b.held:
+					Ach.unlock("ACH_TAMER")
 	if helper:
 		_update_helper()
 	if Game.mode == "chaos" and not shift_over:
@@ -2205,6 +2233,8 @@ func _buy_decor(id: String) -> void:
 	Game.bank -= d[2]
 	Game.tokens -= d[3]
 	Game.decor[id] = true
+	if Game.decor.size() >= 5:
+		Ach.unlock("ACH_DECOR_5")
 	if id.begins_with("rec_") or id == "vinyl":
 		Game.record = "rec_jazz" if id == "vinyl" else id
 	Game.save_game()
@@ -2477,6 +2507,11 @@ func _begin_shift() -> void:
 	# пункт открыт: пошли клиенты и поставки
 	Game.phase = "open"
 	is_open = true
+	if Game.mode == "career":
+		if Game.district_idx() >= 1:
+			Ach.unlock("ACH_DISTRICT_2")
+		if Game.district_idx() >= 5:
+			Ach.unlock("ACH_DISTRICT_6")
 	if not Game.tutorial_done and Game.mode == "career":
 		tut_step = 0
 	if helper:
@@ -2811,7 +2846,10 @@ func _pick_kind() -> String:
 	var fav: Array = Game.district()["kinds"]
 	if not fav.empty() and randf() < 0.55:
 		return pick(fav)
-	return pick(KINDS.keys())
+	# секретный гость приходит только по пасхалке
+	var ks: Array = KINDS.keys()
+	ks.erase("maga")
+	return pick(ks)
 
 
 func _play_music() -> void:
@@ -2948,6 +2986,7 @@ func _safe_dial(b) -> void:
 
 
 func _safe_open(p) -> void:
+	Ach.unlock("ACH_SAFE")
 	Sfx.play_at("lid", SAFE, 0.1, 2.0)
 	_flash(tr("Сейф открыт! Ценная посылка %s выпала") % disp(p.code), 2.0)
 	p.in_safe = false
@@ -3634,6 +3673,7 @@ remote func net_customer_leave(id: int, happy: bool, text: String) -> void:
 
 remote func net_end_shift(txt: String) -> void:
 	shift_over = true
+	Ach.unlock("ACH_COOP")
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	hud_panel_text.text = txt + tr("\n\nЖдём, пока хост начнёт новую смену...")
 	hud_panel.visible = true
@@ -4125,6 +4165,7 @@ func _update_maga(delta: float) -> void:
 
 
 func _maga_reward() -> void:
+	Ach.unlock("ACH_MAGA")
 	Game.tokens += 5
 	if not "mouse_ears" in Settings.owned:
 		Settings.owned.append("mouse_ears")

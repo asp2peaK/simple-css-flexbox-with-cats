@@ -25,6 +25,7 @@ Settings="*res://scripts/settings.gd"
 Sfx="*res://scripts/sfx.gd"
 Game="*res://scripts/game.gd"
 Net="*res://scripts/net.gd"
+Ach="*res://scripts/achievements.gd"
 
 [display]
 
