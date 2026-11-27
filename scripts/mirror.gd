@@ -2,10 +2,11 @@ extends Spatial
 # Зеркало: настоящее отражение (вторая камера в маленький Viewport) и редактор внешности по клику.
 
 const Doll := preload("res://scripts/paperdoll.gd")
-const GW := 0.677
-const GH := 1.19
-const GLASS_Y := 0.908
-const H := 1.9
+# стекло в раме: x 15–71, y 34–133 из 88×160; высота подобрана, чтобы видеть себя с головой
+const H := 2.4
+const GW := H * 56.0 / 160.0
+const GH := H * 99.0 / 160.0
+const GLASS_Y := H * (160.0 - 83.5) / 160.0
 
 var main
 var vp: Viewport
@@ -34,7 +35,7 @@ func build(m) -> void:
 	fr.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 	fr.translation = Vector3(0, H / 2.0, 0)
 	add_child(fr)
-	main._clickable(fr, Vector3(0.42, 0.9, 0.06), tr("[ЛКМ/E] Зеркало: сменить внешность"), "_open_mirror")
+	main._clickable(fr, Vector3(0.53, 1.15, 0.06), tr("[ЛКМ/E] Зеркало: сменить внешность"), "_open_mirror")
 	vp = Viewport.new()
 	vp.size = Vector2(136, 240)
 	vp.render_target_v_flip = true
@@ -103,7 +104,7 @@ func open() -> void:
 	panel = PanelContainer.new()
 	panel.theme = load("res://scripts/ui_theme.gd").make()
 	panel.pause_mode = Node.PAUSE_MODE_PROCESS
-	panel.rect_position = Vector2(110, 22)
+	panel.rect_position = Vector2(40, 22)
 	panel.rect_min_size = Vector2(420, 300)
 	main.pause_panel.get_parent().add_child(panel)
 	var font: Font = main.font_big.duplicate()
@@ -144,7 +145,7 @@ func open() -> void:
 	nick_edit.text = edit.get("nick", "")
 	nick_edit.max_length = 16
 	nick_edit.placeholder_text = tr("Игрок")
-	nick_edit.rect_min_size = Vector2(170, 0)
+	nick_edit.rect_min_size = Vector2(230, 0)
 	nick_edit.add_font_override("font", font)
 	nr.add_child(nick_edit)
 	for key in ["race", "skin", "apron", "hat", "face"]:
@@ -161,7 +162,7 @@ func open() -> void:
 		a.connect("pressed", self, "_step", [key, -1])
 		row.add_child(a)
 		var val := Label.new()
-		val.rect_min_size = Vector2(130, 0)
+		val.rect_min_size = Vector2(196, 0)
 		val.align = Label.ALIGN_CENTER
 		val.clip_text = true
 		val.add_font_override("font", font)
@@ -174,7 +175,7 @@ func open() -> void:
 		rows[key] = val
 	info = Label.new()
 	info.autowrap = true
-	info.rect_min_size = Vector2(250, 34)
+	info.rect_min_size = Vector2(330, 34)
 	info.add_font_override("font", font)
 	r.add_child(info)
 	var br := HBoxContainer.new()

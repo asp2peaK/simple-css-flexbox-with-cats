@@ -42,7 +42,14 @@ def frames_on_canvas(frames):
 
 
 def char8(sheet, kind, target_h):
-    a = clean_specks(load_rgba(sheet))
+    a = load_rgba(sheet)
+    if sheet == 47:
+        # розовые наушники Маги близки к фону: возвращаем пиксели, где красный заметно больше синего
+        raw = np.array(Image.open(os.path.join(SRC, "sheet%02d.png" % sheet)).convert("RGBA"))
+        r, b = raw[..., 0].astype(int), raw[..., 2].astype(int)
+        keep = (a[..., 3] == 0) & (r - b > 35) & (r > 150)
+        a[keep] = raw[keep]
+    a = clean_specks(a)
     it = find_items(a, 2, 4)
     scale = target_h / (it[0][3] - it[0][1])
     fr = frames_on_canvas([crop_scaled(a, b, scale) for b in it])

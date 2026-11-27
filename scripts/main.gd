@@ -3974,6 +3974,16 @@ func _shotfix() -> void:
 		mirror.open()
 		yield(get_tree().create_timer(0.4), "timeout")
 		_save(dir + "/fix_editor.png")
+		var k := 0
+		for lk in [{"race": "human", "hat": "wizard", "face": "glasses"}, {"race": "goblin", "hat": "cowboy", "face": "mustache"},
+				{"race": "orc", "hat": "headphones", "face": "sunglasses"}]:
+			for key in lk:
+				mirror.edit[key] = lk[key]
+			mirror.view_i = k % 3
+			mirror._refresh()
+			yield(get_tree().create_timer(0.3), "timeout")
+			_save(dir + "/fix_editor%d.png" % k)
+			k += 1
 		mirror.close()
 	_open_laptop(null)
 	var ev := InputEventAction.new()
