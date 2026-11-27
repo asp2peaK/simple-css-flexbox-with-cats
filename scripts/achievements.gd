@@ -47,11 +47,33 @@ func _ready() -> void:
 	if c.load(PATH) == OK:
 		got = c.get_value("ach", "got", {})
 		counts = c.get_value("ach", "counts", {})
-	if Engine.has_singleton("Steam"):
-		steam = Engine.get_singleton("Steam")
+	_init_steam()
 	_layer = CanvasLayer.new()
 	_layer.layer = 90
 	add_child(_layer)
+
+
+# GodotSteam: без steamInitEx() достижения в Steam не уходят.
+func _init_steam() -> void:
+	if not Engine.has_singleton("Steam"):
+		return
+	var s = Engine.get_singleton("Steam")
+	var r: Dictionary = s.steamInitEx()
+	print("Steam init: ", r)
+	if int(r.get("status", 1)) != 0:
+		return
+	steam = s
+	set_process(true)
+	# то, что открыто раньше без Steam, тоже отправляем
+	for id in got.keys():
+		steam.setAchievement(id)
+	if got.size() > 0:
+		steam.storeStats()
+
+
+func _process(_delta: float) -> void:
+	if steam:
+		steam.run_callbacks()
 
 
 func _save() -> void:
