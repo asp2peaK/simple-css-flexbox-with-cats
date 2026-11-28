@@ -26,7 +26,10 @@ const PAD_AXES := {"move_forward": [JOY_AXIS_1, -1.0], "move_back": [JOY_AXIS_1,
 	"grab": [JOY_ANALOG_R2, 1.0], "place": [JOY_ANALOG_L2, 1.0]}
 var keys := DEFAULT_KEYS.duplicate()
 var sharp := true  # чёткая картинка (рендер в размер окна) или пиксельная 640x360
-var lang := "ru"
+var lang := "en"
+var lang_saved := false  # язык уже выбран (иначе берём из Steam или системы)
+const LANGS := ["ru", "en", "de", "es"]
+const LANG_NAMES := ["Русский", "English", "Deutsch", "Español"]
 var streamer := false  # режим стримера: прятать ники чата/друзей и IP
 var twitch := ""  # канал Twitch для голосования чата
 var reopen_settings := false
@@ -44,6 +47,8 @@ func _ready() -> void:
 	_ensure_buses()
 	_load_translation()
 	load_cfg()
+	if not lang_saved:
+		lang = os_lang()
 	for a in OS.get_cmdline_args():
 		if a.begins_with("--lang="):
 			lang = a.substr(7)
@@ -51,20 +56,48 @@ func _ready() -> void:
 	apply_keys()
 
 
-# английский перевод: ключ — русская строка, значение — английская (res://lang/en.json)
+# переводы: ключ — русская строка, значение — перевод (res://lang/<код>.json)
 func _load_translation() -> void:
-	var f := File.new()
-	if f.open("res://lang/en.json", File.READ) != OK:
+	for code in LANGS:
+		if code == "ru":
+			continue
+		var f := File.new()
+		if f.open("res://lang/%s.json" % code, File.READ) != OK:
+			continue
+		var d = parse_json(f.get_as_text())
+		f.close()
+		if typeof(d) != TYPE_DICTIONARY:
+			continue
+		var t := Translation.new()
+		t.locale = code
+		for k in d:
+			t.add_message(k, d[k])
+		TranslationServer.add_translation(t)
+
+
+# латиница: таблички, коробки и неон берём английские (для en/de/es)
+func latin() -> bool:
+	return lang != "ru"
+
+
+func os_lang() -> String:
+	var l: String = OS.get_locale().to_lower().substr(0, 2)
+	if l in ["ru", "be", "uk", "kk"]:
+		return "ru"
+	if l in LANGS:
+		return l
+	return "en"
+
+
+# язык Steam (при первом запуске через Steam), вызывается из achievements.gd
+func steam_lang(name: String) -> void:
+	if lang_saved:
 		return
-	var d = parse_json(f.get_as_text())
-	f.close()
-	if typeof(d) != TYPE_DICTIONARY:
-		return
-	var t := Translation.new()
-	t.locale = "en"
-	for k in d:
-		t.add_message(k, d[k])
-	TranslationServer.add_translation(t)
+	var m := {"russian": "ru", "english": "en", "german": "de", "spanish": "es", "latam": "es",
+		"ukrainian": "ru"}
+	if m.has(name) and m[name] != lang:
+		lang = m[name]
+		apply()
 
 
 func apply_keys() -> void:
@@ -152,6 +185,7 @@ func save_cfg() -> void:
 	c.set_value("video", "vsync", vsync)
 	c.set_value("video", "sharp", sharp)
 	c.set_value("game", "lang", lang)
+	lang_saved = true
 	c.set_value("game", "twitch", twitch)
 	c.set_value("game", "streamer", streamer)
 	c.set_value("input", "sens", sens)
@@ -171,7 +205,11 @@ func load_cfg() -> void:
 	res_idx = int(clamp(c.get_value("video", "res_idx", res_idx), 0, RESOLUTIONS.size() - 1))
 	vsync = c.get_value("video", "vsync", vsync)
 	sharp = c.get_value("video", "sharp", sharp)
-	lang = c.get_value("game", "lang", lang)
+	if c.has_section_key("game", "lang"):
+		lang = str(c.get_value("game", "lang", lang))
+		lang_saved = lang in LANGS
+		if not lang_saved:
+			lang = "en"
 	twitch = str(c.get_value("game", "twitch", twitch))
 	streamer = bool(c.get_value("game", "streamer", streamer))
 	sens = c.get_value("input", "sens", sens)

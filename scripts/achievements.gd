@@ -64,6 +64,7 @@ func _init_steam() -> void:
 		return
 	steam = s
 	set_process(true)
+	Settings.steam_lang(str(steam.getCurrentGameLanguage()))
 	# ник по умолчанию — из Steam (в зеркале его можно поменять)
 	if str(Settings.look.get("nick", "")).strip_edges() == "":
 		var pn: String = str(steam.getPersonaName()).strip_edges()

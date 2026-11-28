@@ -70,6 +70,14 @@ const CAGE := Vector3(-6.48, 0, -3.25)  # у левой стены между л
 var mats := {}
 var parcels := []
 var shelf_slots := []
+var shelf_units := []  # стеллажи: центр и все их узлы (чтобы двигать целиком)
+var rail_mats := {}  # буква -> материал кромки (перекраска)
+var carry_kind := ""  # что несём: floor / surface / shelf
+var carry_from := Vector3.ZERO
+var carry_ok := false
+var carry_shelf := -1
+var carry_parcels := []
+var carry_marker: MeshInstance
 var money := 0
 var served := 0
 var failed := 0
@@ -166,6 +174,9 @@ var shop_tab := "up"
 
 
 func _ready() -> void:
+	# HUD (реплики над головами) считаем последним, когда камера уже сдвинута в этом кадре,
+	# иначе подписи отстают на кадр и дрожат
+	process_priority = 100
 	if Net.active:
 		seed(Net.seed_value)  # у всех одинаковый склад
 	else:
@@ -302,6 +313,10 @@ func _ready() -> void:
 		_test11()
 	if "--relangtest" in OS.get_cmdline_args():
 		_relangtest()
+	if "--shelftest" in OS.get_cmdline_args():
+		_shelftest()
+	if "--mirrortest" in OS.get_cmdline_args():
+		_mirrortest()
 	if "--shotfix" in OS.get_cmdline_args():
 		_shotfix()
 	if "--test13" in OS.get_cmdline_args():
@@ -405,7 +420,9 @@ func deco(size: Vector3, pos: Vector3, m: Material) -> MeshInstance:
 
 func make_sign(name: String, pos: Vector3, rot_y: float, px := 0.008) -> Sprite3D:
 	var s := Sprite3D.new()
-	s.texture = tex("sign_" + name + ("_en" if Settings.lang == "en" else ""), false)
+	s.texture = tex("sign_" + name + ("_en" if Settings.latin() else ""), false)
+	# на табличках мелкий текст: сглаживание и мипмапы, иначе буквы рябят при движении камеры
+	s.texture.flags = Texture.FLAG_FILTER | Texture.FLAG_MIPMAPS
 	s.pixel_size = px
 	s.double_sided = false
 	s.shaded = false
@@ -589,8 +606,10 @@ func _build_shelves() -> void:
 		units.append([])
 	for k in active.size():
 		units[int(k * n / active.size())].append(active[k])
+	shelf_units = []
 	for si in n:
-		var c: Vector3 = SHELF_POS[si]
+		var c: Vector3 = shelf_center(si)
+		var nodes0 := get_child_count()
 		var x := c.x
 		var z := c.z
 		var w := 4.4
@@ -624,8 +643,10 @@ func _build_shelves() -> void:
 				for ci in cols[k]:
 					slots.append(Vector3(x0 + 0.55 + ci * 1.1, y + 0.35, z))
 			slots.shuffle()
-			var col: Color = LETTER_COLORS[sec_lets[0]] if not sec_lets.empty() else Color(0.5, 0.5, 0.5)
+			var col: Color = letter_color(sec_lets[0]) if not sec_lets.empty() else Color(0.5, 0.5, 0.5)
 			var rail := unshaded(col)
+			if not sec_lets.empty():
+				rail_mats[sec_lets[0]] = rail
 			for y in [0.1, 0.9, 1.7]:
 				# бортики цвета буквы, чтобы коробки не соскальзывали и секцию было видно издалека
 				for side in [-1, 1]:
@@ -633,22 +654,44 @@ func _build_shelves() -> void:
 			if k > 0:
 				# перегородка между секциями
 				solid(Vector3(0.05, 1.7, d), Vector3(x0, 0.95, z), wood)
-			shelves.append({"pos": Vector3(cx, 0, z), "half": sw / 2.0, "slots": slots, "letters": sec_lets})
+			shelves.append({"pos": Vector3(cx, 0, z), "half": sw / 2.0, "slots": slots, "letters": sec_lets, "unit": si})
 			col0 += cols[k]
+		var unit := {"c": c, "nodes": []}
+		for ci in range(nodes0, get_child_count()):
+			var nd: Node = get_child(ci)
+			unit["nodes"].append(nd)
+			if nd is StaticBody:
+				nd.set_meta("shelf", si)
+		shelf_units.append(unit)
+		# ручки на торцах: стеллаж можно перекатить, пока пункт закрыт (в коопе — нет, склад общий)
+		if not Net.active and Game.mode == "career":
+			for side in [-1, 1]:
+				var hnd := Spatial.new()
+				hnd.translation = Vector3(x + side * (w / 2 + 0.02), 1.2, z)
+				add_child(hnd)
+				var hb := _clickable(hnd, Vector3(0.1, 1.2, d / 2 + 0.05), tr("[ЛКМ/E] Передвинуть стеллаж (пока пункт закрыт)"), "_pick_shelf")
+				hb.set_meta("shelf", si)
+				unit["nodes"].append(hnd)
 	# таблички с буквами над каждой секцией (с двух сторон), цвет как у кромки
 	for sh in shelves:
 		var lets: Array = sh["letters"]
 		if lets.empty():
 			continue
 		var wpl := lets.size() * 0.4 + 0.14
-		var col: Color = LETTER_COLORS[lets[0]]
+		var col: Color = letter_color(lets[0])
+		var sign0 := get_child_count()
 		for side in [1, -1]:
 			var zz: float = sh["pos"].z + 0.38 * side
 			deco(Vector3(wpl, 0.5, 0.04), Vector3(sh["pos"].x, 2.62, zz - 0.03 * side), wood)
-			deco(Vector3(wpl + 0.06, 0.06, 0.05), Vector3(sh["pos"].x, 2.34, zz - 0.03 * side), unshaded(col))
+			var stripe := deco(Vector3(wpl + 0.06, 0.06, 0.05), Vector3(sh["pos"].x, 2.34, zz - 0.03 * side), rail_mats.get(lets[0], unshaded(col)))
+			if side == 1 and Game.lvl("paints") > 0 and not Net.active:
+				# табличка — кнопка перекраски секции
+				var pb := _clickable(stripe, Vector3(wpl / 2.0, 0.3, 0.06), tr("[ЛКМ/E] Перекрасить секцию (пока пункт закрыт)"), "_paint_section")
+				pb.translation = Vector3(0, 0.28, 0)
+				pb.set_meta("letter", lets[0])
 			for k in lets.size():
 				var s := Sprite3D.new()
-				s.texture = tex(("ui/let_en_%d" if Settings.lang == "en" else "ui/let_%d") % lets[k], false)
+				s.texture = tex(("ui/let_en_%d" if Settings.latin() else "ui/let_%d") % lets[k], false)
 				s.pixel_size = 0.38 / 28.0
 				s.shaded = false
 				s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
@@ -656,6 +699,41 @@ func _build_shelves() -> void:
 				s.translation = Vector3(sh["pos"].x + ox * side, 2.64, zz)
 				s.rotation.y = 0.0 if side == 1 else PI
 				add_child(s)
+		for ci in range(sign0, get_child_count()):
+			shelf_units[sh["unit"]]["nodes"].append(get_child(ci))
+
+
+# палитра перекраски секций (улучшение «Краски для стеллажей»)
+const PAINT_COLORS := [Color(0.85, 0.2, 0.15), Color(0.95, 0.55, 0.1), Color(0.95, 0.85, 0.2), Color(0.55, 0.85, 0.2),
+	Color(0.2, 0.7, 0.25), Color(0.1, 0.75, 0.75), Color(0.2, 0.5, 0.95), Color(0.35, 0.3, 0.9),
+	Color(0.65, 0.3, 0.85), Color(0.95, 0.4, 0.7), Color(0.95, 0.95, 0.95), Color(0.45, 0.3, 0.2)]
+
+
+func letter_color(li: int) -> Color:
+	var ci = Game.letter_colors.get(str(li))
+	if ci != null and Game.lvl("paints") > 0 and not Net.active:
+		return PAINT_COLORS[int(ci) % PAINT_COLORS.size()]
+	return LETTER_COLORS[li]
+
+
+func _paint_section(b) -> void:
+	if is_open:
+		_flash(tr("Красить можно, когда пункт закрыт."), 1.5)
+		return
+	if carrying:
+		return
+	var li := int(b.get_meta("letter"))
+	var cur: Color = letter_color(li)
+	var ci := 0
+	for k in PAINT_COLORS.size():
+		if PAINT_COLORS[k].is_equal_approx(cur):
+			ci = k
+	ci = (ci + 1) % PAINT_COLORS.size()
+	Game.letter_colors[str(li)] = ci
+	if rail_mats.has(li):
+		rail_mats[li].albedo_color = PAINT_COLORS[ci]
+	Sfx.play("splash", 0.15, -8.0)
+	Game.save_game()
 
 
 # какие буквы сегодня в ходу (индексы в LETTERS)
@@ -922,7 +1000,7 @@ func _build_helpers() -> void:
 func _new_parcel(i: int):
 	var sizes := [Vector3(0.5, 0.4, 0.5), Vector3(0.45, 0.35, 0.45), Vector3(0.55, 0.45, 0.5), Vector3(0.4, 0.4, 0.4)]
 	var p = Parcel.new()
-	var t := tex(("boxes_en/box_%02d" if Settings.lang == "en" else "boxes/box_%02d") % i, false)
+	var t := tex(("boxes_en/box_%02d" if Settings.latin() else "boxes/box_%02d") % i, false)
 	var typ: String = BOX_TYPES[i]
 	var sz: Vector3 = pick(sizes)
 	# кооп: сундук огромный, а одна «живая» посылка — корова в ящике; несут только вдвоём
@@ -2399,7 +2477,7 @@ func _buy_decor(id: String) -> void:
 
 
 func _buy(id: String) -> void:
-	if id in ["window", "shelf", "expand", "freezer", "golem", "helper"] and Game.price(id) >= 0 and Game.bank >= Game.price(id):
+	if id in ["window", "shelf", "expand", "freezer", "golem", "helper", "paints"] and Game.price(id) >= 0 and Game.bank >= Game.price(id):
 		structural_bought = true
 	if Game.buy(id):
 		Sfx.play("coin", 0.05, 0.0)
@@ -2868,6 +2946,9 @@ func _ring_desk(b) -> void:
 		_spawn_customer()
 
 
+const SURFACE_DECOR := ["vinyl", "trophy", "mouse_queen"]  # ставятся только на стол/стойку, остальное — на пол
+
+
 func _pick_decor(b) -> void:
 	if is_open:
 		_flash(tr("Переставлять декор можно, когда пункт закрыт."), 1.5)
@@ -2876,9 +2957,137 @@ func _pick_decor(b) -> void:
 		return
 	var root: Spatial = b.get_parent()
 	carrying = root
+	carry_shelf = -1
+	carry_kind = "surface" if str(root.get_meta("key")) in SURFACE_DECOR else "floor"
+	carry_from = root.global_transform.origin
 	ui_block = true
 	_set_root_layers(root, true)
-	_flash(tr("Наведи, куда поставить, и кликни."), 2.0)
+	_flash(tr("Наведи, куда поставить, и кликни. ПКМ — отмена.") if carry_kind == "floor" else tr("Это ставится на стол или стойку. ПКМ — отмена."), 2.5)
+
+
+func _pick_shelf(b) -> void:
+	if is_open:
+		_flash(tr("Двигать стеллажи можно, когда пункт закрыт."), 1.5)
+		return
+	if carrying or player.held:
+		return
+	carry_shelf = int(b.get_meta("shelf"))
+	var u: Dictionary = shelf_units[carry_shelf]
+	carrying = u
+	carry_kind = "shelf"
+	carry_from = u["c"]
+	ui_block = true
+	for nd in u["nodes"]:
+		if nd is StaticBody:
+			nd.set_meta("layer_was", nd.collision_layer)
+			nd.collision_layer = 0
+	# коробки на полках едут вместе со стеллажом
+	carry_parcels = []
+	for q in parcels:
+		if is_instance_valid(q) and not q.held and not q.delivered:
+			var o: Vector3 = q.global_transform.origin - u["c"]
+			if abs(o.x) < 2.3 and abs(o.z) < 0.45 and o.y > 0.05 and o.y < 2.4:
+				q.mode = RigidBody.MODE_KINEMATIC
+				carry_parcels.append(q)
+	_flash(tr("Наведи на пол склада и кликни. Нужен проход с обеих сторон. ПКМ — отмена."), 3.0)
+
+
+func shelf_center(si: int) -> Vector3:
+	var c: Vector3 = SHELF_POS[si]
+	var sp = Game.shelf_pos.get(str(si))
+	if not Net.active and Game.mode == "career" and sp is Array and sp.size() == 2:
+		c = Vector3(float(sp[0]), 0, float(sp[1]))
+	if not _shelf_clear(c):
+		# новый стеллаж встал бы на передвинутый: ищем свободное место на складе
+		var zmin := -10.6 if Game.lvl("expand") > 0 else -5.0
+		var z := -3.0
+		while z >= zmin:
+			for x in [-4.0, 4.0, 0.0, -2.0, 2.0]:
+				if _shelf_clear(Vector3(x, 0, z)):
+					return Vector3(x, 0, z)
+			z -= 0.25
+	return c
+
+
+func _shelf_clear(c: Vector3) -> bool:
+	for u in shelf_units:
+		if abs(u["c"].x - c.x) < 4.5 and abs(u["c"].z - c.z) < 1.9:
+			return false
+	return true
+
+
+func _move_shelf(si: int, to: Vector3) -> void:
+	var u: Dictionary = shelf_units[si]
+	var dl: Vector3 = to - u["c"]
+	if dl.length() < 0.001:
+		return
+	u["c"] = to
+	for nd in u["nodes"]:
+		if is_instance_valid(nd):
+			nd.translation += dl
+	for sh in shelves:
+		if sh.get("unit", -1) == si:
+			sh["pos"] += dl
+			var sl: Array = sh["slots"]
+			for k in sl.size():
+				sl[k] += dl
+	for q in carry_parcels:
+		if is_instance_valid(q):
+			q.global_transform.origin += dl
+
+
+# можно ли поставить стеллаж: только склад (за стойкой), не в стену и не впритык — с проходом
+func _shelf_ok(si: int, c: Vector3) -> bool:
+	if c.z > -2.9 or abs(c.x) > 4.4:
+		return false
+	var space := get_world().direct_space_state
+	var q := PhysicsShapeQueryParameters.new()
+	var bx := BoxShape.new()
+	bx.extents = Vector3(2.25, 1.0, 0.35 + 0.6)
+	q.set_shape(bx)
+	q.transform = Transform(Basis(), c + Vector3(0, 1.2, 0))
+	q.collision_mask = 1
+	for r in space.intersect_shape(q, 16):
+		var col = r["collider"]
+		if col is StaticBody and not (col.has_meta("shelf") and int(col.get_meta("shelf")) == si):
+			if "--shelftest" in OS.get_cmdline_args():
+				print("shelf blocked by ", col.name, " at ", col.global_transform.origin)
+			return false
+	var pp: Vector3 = player.global_transform.origin - c
+	if abs(pp.x) < 2.6 and abs(pp.z) < 0.75:
+		return false  # не накатывать стеллаж на себя
+	if mirror:
+		var mp: Vector3 = mirror.global_transform.origin
+		if abs(c.x - mp.x) < 2.2 + 0.6 and abs(c.z - mp.z) < 0.35 + 0.9:
+			return false
+	return true
+
+
+# можно ли поставить декор: цветы — на пол, мелочь — на стол/стойку; не внутрь мебели и не друг в друга
+func _decor_ok(hit: Dictionary) -> bool:
+	var p: Vector3 = hit["position"]
+	var col = hit["collider"]
+	if hit["normal"].y < 0.7 or col is RigidBody:
+		return false
+	if carry_kind == "floor":
+		if p.y > 0.1:
+			return false
+	else:
+		if p.y < 0.5 or p.y > 2.0 or col.has_meta("shelf"):
+			return false
+	for m in movables:
+		if m != carrying and is_instance_valid(m) and m.global_transform.origin.distance_to(p) < (0.55 if carry_kind == "floor" else 0.3):
+			return false
+	var q := PhysicsShapeQueryParameters.new()
+	var sp := SphereShape.new()
+	sp.radius = 0.25 if carry_kind == "floor" else 0.1
+	q.set_shape(sp)
+	q.transform = Transform(Basis(), p + Vector3(0, sp.radius + 0.06, 0))
+	q.collision_mask = 1
+	for r in get_world().direct_space_state.intersect_shape(q, 8):
+		if r["collider"] is StaticBody:
+			return false
+	return true
 
 
 func _set_root_layers(root: Node, off: bool) -> void:
@@ -2894,12 +3103,80 @@ func _set_root_layers(root: Node, off: bool) -> void:
 
 func _update_carry() -> void:
 	if carrying == null or player == null:
+		if carry_marker:
+			carry_marker.visible = false
 		return
 	var from: Vector3 = player.cam.global_transform.origin
-	var to: Vector3 = from - player.cam.global_transform.basis.z * 4.0
+	var to: Vector3 = from - player.cam.global_transform.basis.z * 5.0
 	var hit := get_world().direct_space_state.intersect_ray(from, to, [player], 1)
-	if hit and hit["normal"].y > 0.6 and hit["position"].z < 0.0:
-		carrying.global_transform.origin = hit["position"]
+	if carry_marker == null:
+		carry_marker = MeshInstance.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.22
+		cyl.bottom_radius = 0.22
+		cyl.height = 0.02
+		cyl.radial_segments = 16
+		carry_marker.mesh = cyl
+		var mm := SpatialMaterial.new()
+		mm.flags_unshaded = true
+		mm.flags_transparent = true
+		carry_marker.material_override = mm
+		add_child(carry_marker)
+	carry_ok = false
+	if not hit:
+		carry_marker.visible = false
+		return
+	var p: Vector3 = hit["position"]
+	if carry_kind == "shelf":
+		var c := Vector3(stepify(p.x, 0.5), 0, stepify(p.z, 0.25))
+		carry_ok = hit["normal"].y > 0.7 and p.y < 0.1 and _shelf_ok(carry_shelf, c)
+		if carry_ok:
+			_move_shelf(carry_shelf, c)
+		carry_marker.scale = Vector3(10.0, 1, 1.6) if carry_ok else Vector3(1, 1, 1)
+		carry_marker.global_transform.origin = (c if carry_ok else p) + Vector3(0, 0.02, 0)
+	else:
+		carry_ok = _decor_ok(hit)
+		if carry_ok:
+			carrying.global_transform.origin = p
+		carry_marker.scale = Vector3(1, 1, 1) if carry_kind == "floor" else Vector3(0.6, 1, 0.6)
+		carry_marker.global_transform.origin = p + Vector3(0, 0.015, 0)
+	carry_marker.visible = true
+	carry_marker.material_override.albedo_color = Color(0.3, 1.0, 0.4, 0.45) if carry_ok else Color(1.0, 0.25, 0.2, 0.55)
+
+
+func _drop_carry(cancel: bool) -> void:
+	if carry_kind == "shelf":
+		if cancel:
+			_move_shelf(carry_shelf, carry_from)
+		var u: Dictionary = shelf_units[carry_shelf]
+		for nd in u["nodes"]:
+			if nd is StaticBody and nd.has_meta("layer_was"):
+				nd.collision_layer = nd.get_meta("layer_was")
+		for q in carry_parcels:
+			if is_instance_valid(q):
+				q.mode = RigidBody.MODE_RIGID
+				q.linear_velocity = Vector3.ZERO
+				q.sleeping = false
+		carry_parcels = []
+		var c: Vector3 = u["c"]
+		if c.distance_to(SHELF_POS[carry_shelf]) < 0.01:
+			Game.shelf_pos.erase(str(carry_shelf))
+		else:
+			Game.shelf_pos[str(carry_shelf)] = [c.x, c.z]
+		carry_shelf = -1
+	else:
+		if cancel:
+			carrying.global_transform.origin = carry_from
+		var p: Vector3 = carrying.global_transform.origin
+		Game.decor_pos[carrying.get_meta("key")] = [p.x, p.y, p.z]
+		_set_root_layers(carrying, false)
+	carrying = null
+	carry_kind = ""
+	ui_block = false
+	if carry_marker:
+		carry_marker.visible = false
+	Sfx.play("thud1", 0.1, -4.0)
+	Game.save_game()
 
 
 func ui_click(_event) -> void:
@@ -2913,13 +3190,12 @@ func ui_click(_event) -> void:
 		hud_panel_text.visible = true
 		return
 	if carrying:
-		var p: Vector3 = carrying.global_transform.origin
-		Game.decor_pos[carrying.get_meta("key")] = [p.x, p.y, p.z]
-		_set_root_layers(carrying, false)
-		carrying = null
-		ui_block = false
-		Sfx.play("thud1", 0.1, -4.0)
-		Game.save_game()
+		if _event and _event.is_action_pressed("place"):
+			_drop_carry(true)  # ПКМ — вернуть на место
+		elif carry_ok:
+			_drop_carry(false)
+		else:
+			_flash(tr("Сюда нельзя: красная метка. Найди место, где метка зелёная."), 1.5)
 
 
 func _deliver_decor(id: String) -> void:
@@ -3342,7 +3618,7 @@ func _decor_item(id: String) -> void:
 				add_child(hat)
 		"neon":
 			var ns := Sprite3D.new()
-			ns.texture = tex("decor/neon_en" if Settings.lang == "en" else "decor/neon", false)
+			ns.texture = tex("decor/neon_en" if Settings.latin() else "decor/neon", false)
 			ns.pixel_size = 2.6 / ns.texture.get_width()
 			ns.shaded = false
 			ns.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
@@ -4257,12 +4533,93 @@ func _update_tut_arrow() -> void:
 
 
 # ---------------------------------------------------------------- зеркало и внешность игрока
+func _aim_at(target: Vector3, from: Vector3) -> void:
+	player.global_transform.origin = from
+	var dir: Vector3 = target - player.cam.global_transform.origin
+	player.rotation.y = atan2(-dir.x, -dir.z)
+	player.cam.rotation.x = atan2(dir.y, Vector2(dir.x, dir.z).length())
+
+
+func _shelftest() -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	yield(get_tree().create_timer(1.5), "timeout")
+	print("units=", shelf_units.size(), " closed=", not is_open, " parcels=", parcels.size())
+	for k in 3:
+		var sl: Vector3 = shelves[0]["slots"][k]
+		parcels[k].global_transform.origin = sl
+		parcels[k].linear_velocity = Vector3.ZERO
+	yield(get_tree().create_timer(1.0), "timeout")
+	var fake := StaticBody.new()
+	fake.set_meta("shelf", 0)
+	var before := 0
+	for q in parcels:
+		var o: Vector3 = q.global_transform.origin - shelf_units[0]["c"]
+		if abs(o.x) < 2.3 and abs(o.z) < 0.45 and o.y > 0.05:
+			before += 1
+	_pick_shelf(fake)
+	# 1) в стойку — нельзя
+	_aim_at(Vector3(-4, 0, -0.5), Vector3(-2, 0.05, -2.0))
+	yield(get_tree().create_timer(0.3), "timeout")
+	print("aim counter ok=", carry_ok)
+	# 2) свободное место на складе — можно
+	_aim_at(Vector3(0.0, 0, -3.5), Vector3(0.0, 0.05, -1.5))
+	yield(get_tree().create_timer(0.3), "timeout")
+	print("aim free ok=", carry_ok, " c=", shelf_units[0]["c"])
+	_save(dir + "/shelf_carry.png")
+	ui_click(null)
+	yield(get_tree().create_timer(1.0), "timeout")
+	var after := 0
+	for q in parcels:
+		var o: Vector3 = q.global_transform.origin - shelf_units[0]["c"]
+		if abs(o.x) < 2.3 and abs(o.z) < 0.45 and o.y > 0.05:
+			after += 1
+	print("dropped: pos=", Game.shelf_pos, " parcels on shelf before=", before, " after=", after, " slot0=", shelves[0]["slots"][0] if shelves[0]["slots"].size() > 0 else null)
+	# 3) декор: цветок на стойку — нельзя, на пол — можно
+	for m in movables:
+		if str(m.get_meta("key")) == "plant2":
+			var fb := StaticBody.new()
+			m.add_child(fb)
+			_pick_decor(fb)
+			_aim_at(Vector3(-1.0, 0.98, 0.0), Vector3(-1.0, 0.05, -1.5))
+			yield(get_tree().create_timer(0.3), "timeout")
+			print("plant on counter ok=", carry_ok)
+			_aim_at(Vector3(0.5, 0.0, -2.2), Vector3(0.5, 0.05, -1.0))
+			yield(get_tree().create_timer(0.3), "timeout")
+			print("plant on floor ok=", carry_ok)
+			_save(dir + "/plant_carry.png")
+			ui_click(null)
+	# 4) перекраска
+	if Game.lvl("paints") > 0:
+		var pb := StaticBody.new()
+		pb.set_meta("letter", shelves[0]["letters"][0])
+		_paint_section(pb)
+		_paint_section(pb)
+		print("paint: ", Game.letter_colors)
+	_aim_at(shelf_units[0]["c"] + Vector3(0, 1.2, 0), shelf_units[0]["c"] + Vector3(0, 0.05, 2.6))
+	yield(get_tree().create_timer(0.5), "timeout")
+	_save(dir + "/shelf_after.png")
+	get_tree().quit()
+
+
+func _mirrortest() -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	yield(get_tree().create_timer(1.5), "timeout")
+	var mp: Vector3 = mirror.global_transform.origin
+	for dist in [0.6, 1.2, 2.5, 1.7]:
+		player.global_transform.origin = Vector3(mp.x + (0.8 if dist == 1.7 else 0.0), 0.05, mp.z + dist)
+		player.rotation.y = 0.0
+		player.cam.rotation.x = 0.0
+		yield(get_tree().create_timer(0.6), "timeout")
+		_save(dir + "/mirror_%s.png" % str(dist))
+	get_tree().quit()
+
+
 func _build_mirror() -> void:
 	if not ResourceLoader.exists("res://assets/props/mirror.png") or not load("res://scripts/paperdoll.gd").available():
 		return
 	mirror = load("res://scripts/mirror.gd").new()
 	var z := -10.82 if Game.lvl("expand") > 0 else -5.42
-	mirror.translation = Vector3(-1.35, 0, z)
+	mirror.translation = Vector3(-1.35, 0.25, z)  # висит на стене, стекло на уровне глаз
 	add_child(mirror)
 	mirror.build(self)
 
@@ -4322,7 +4679,7 @@ func _maga_summon() -> void:
 	# посылка Королевы прячется в дальнем углу склада
 	var Parcel = load("res://scripts/parcel.gd")
 	var p = Parcel.new()
-	var bx := "boxes_en/box_maga" if Settings.lang == "en" else "boxes/box_maga"
+	var bx := "boxes_en/box_maga" if Settings.latin() else "boxes/box_maga"
 	p.setup("М-01", false, Vector3(0.38, 0.38, 0.38), tex(bx, false))
 	p.box_type = "living"
 	var spot := Vector3(6.4, 0.4, -9.6) if Game.lvl("expand") > 0 else Vector3(6.4, 0.4, -5.1)

@@ -77,9 +77,9 @@ func build(f: Font) -> void:
 	row3.add_child(l3)
 	var lg := OptionButton.new()
 	lg.add_font_override("font", font)
-	lg.add_item(tr("Русский"))
-	lg.add_item("English")
-	lg.selected = 1 if Settings.lang == "en" else 0
+	for nm in Settings.LANG_NAMES:
+		lg.add_item(nm)
+	lg.selected = max(0, Settings.LANGS.find(Settings.lang))
 	lg.connect("item_selected", self, "_on_lang")
 	row3.add_child(lg)
 	var row4 := HBoxContainer.new()
@@ -201,7 +201,7 @@ func _on_sharp(i: int) -> void:
 
 
 func _on_lang(i: int) -> void:
-	Settings.lang = "en" if i == 1 else "ru"
+	Settings.lang = Settings.LANGS[i]
 	Settings.apply()
 	Settings.save_cfg()
 	# перезапускаем сцену, чтобы все надписи и коробки сменили язык, и снова открываем настройки

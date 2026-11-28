@@ -38,7 +38,7 @@ func build(m) -> void:
 	add_child(fr)
 	main._clickable(fr, Vector3(0.53, 1.15, 0.06), tr("[ЛКМ/E] Зеркало: сменить внешность"), "_open_mirror")
 	vp = Viewport.new()
-	vp.size = Vector2(136, 240)
+	vp.size = Vector2(204, 360)
 	vp.render_target_v_flip = true
 	vp.render_target_update_mode = Viewport.UPDATE_ALWAYS
 	vp.shadow_atlas_size = 0
@@ -100,7 +100,7 @@ func _process(_d: float) -> void:
 	var ox: float = rel.dot(b.x) * k
 	var oy: float = rel.dot(b.y) * k
 	cam.keep_aspect = Camera.KEEP_WIDTH
-	cam.set_frustum(GW * k, Vector2(ox, oy), nr, 40.0)
+	cam.set_frustum(GW * k, Vector2(ox, -oy), nr, 40.0)
 
 
 # ---------------------------------------------------------------- редактор

@@ -341,8 +341,12 @@ func letter() -> void:
 	# письмо от владельца сети, дракона
 	yield(_wait(1.5), "timeout")
 	_cam(Vector3(0.9, 0.05, -1.4), 0.0, -0.35, Vector3(0.9, 0.05, -1.4), 0.0, -0.35)
-	m.story._day = 6
-	m.story._show(6)
+	var li := 6
+	for a in OS.get_cmdline_args():
+		if a.begins_with("--letterid="):
+			li = int(a.substr(11))
+	m.story._day = li
+	m.story._show(li)
 	_start()
 
 

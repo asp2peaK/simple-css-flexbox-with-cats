@@ -2,7 +2,7 @@ extends Node
 # Состояние игры между сменами (автозагрузка Game): день, касса, улучшения, сохранение.
 
 const SAVE_PATH := "user://save.json"
-const VERSION := "0.14.1"
+const VERSION := "0.15"
 # демоверсия: экспорт с фичей "demo" (пресеты "* Demo") или запуск с --demo
 const DEMO_DAYS := 3
 const STORE_APP_ID := 0  # App ID полной версии в Steam, когда появится
@@ -34,9 +34,10 @@ const UPGRADES := {
 	"coffee": ["Кофемашина", "Оглушение вдвое короче + чашка за смену: 15 с бега", 1, [70]],
 	"camera": ["Камера наблюдения", "Воры и мимики подсвечены красным", 1, [90]],
 	"catbed": ["Лежанка для кота", "Кот успокаивает клиентов сильнее и чаще", 1, [40]],
+	"paints": ["Краски для стеллажей", "Перекрашивай секции в свои цвета: клик по табличке, пока закрыто", 1, [50]],
 }
 const ORDER := ["window", "shelf", "expand", "cart", "shoes", "patience", "sorter", "freezer",
-	"amulet", "bell", "golem", "helper", "belt", "coffee", "camera", "catbed"]
+	"amulet", "bell", "golem", "helper", "belt", "coffee", "camera", "catbed", "paints"]
 
 var day := 1
 var bank := 0
@@ -57,6 +58,8 @@ var hardcore := false  # хардкор: 3 злых клиента за смен
 var hc_best := 0  # рекорд хардкора: до какой смены дошёл
 var phase := "open"  # closed = пункт закрыт между сменами
 var decor_pos := {}  # куда игрок переставил декор: ключ -> [x, y, z]
+var shelf_pos := {}  # куда передвинут стеллаж: "номер" -> [x, z] (JSON-ключи — строки)
+var letter_colors := {}  # перекрашенные секции: "буква" -> номер цвета в палитре
 var last_reviews := []  # отзывы прошлой смены (для доски объявлений)
 var chaos_best := 0
 var _backup := {}
@@ -93,7 +96,7 @@ func lvl(id: String) -> int:
 
 # номер посылки для показа: в английской версии латиницей
 func disp(code: String) -> String:
-	if Settings.lang != "en" or code.length() < 1:
+	if not Settings.latin() or code.length() < 1:
 		return code
 	var m := {"А": "A", "Б": "B", "В": "V", "Г": "G", "Д": "D", "К": "K", "М": "M"}
 	var first: String = code.substr(0, 1)
@@ -243,6 +246,8 @@ func new_game(p_hardcore := false) -> void:
 	tasks_day = 0
 	career_done = false
 	decor_pos = {}
+	shelf_pos = {}
+	letter_colors = {}
 	last_reviews = []
 
 
@@ -262,6 +267,7 @@ func save_game() -> void:
 		"seen_kinds": seen_kinds, "tutorial_done": tutorial_done, "rep": rep, "tokens": tokens,
 		"decor": decor, "record": record, "tasks": tasks, "tasks_day": tasks_day,
 		"career_done": career_done, "chaos_best": chaos_best, "decor_pos": decor_pos,
+		"shelf_pos": shelf_pos, "letter_colors": letter_colors,
 		"last_reviews": last_reviews, "hardcore": hardcore, "hc_best": hc_best}))
 	f.close()
 
@@ -288,6 +294,8 @@ func load_game() -> bool:
 	career_done = bool(d.get("career_done", false))
 	chaos_best = int(d.get("chaos_best", 0))
 	decor_pos = d.get("decor_pos", {})
+	shelf_pos = d.get("shelf_pos", {})
+	letter_colors = d.get("letter_colors", {})
 	last_reviews = d.get("last_reviews", [])
 	hardcore = bool(d.get("hardcore", false))
 	hc_best = int(d.get("hc_best", 0))

@@ -53,7 +53,14 @@ for i,it in enumerate(T):
         if it[0]=='card':
             text(im,it[1],52,H//2-34); dur=2.0
         else:
-            text(im,it[1],110,H//2-110,(255,170,60)); text(im,it[2],44,H//2+50,(255,255,255)); text(im,"2peaK's Studio",28,H-70,(200,190,180)); dur=4.0
+            lp=ROOT+'/assets/ui/logo.png'
+            if os.path.exists(lp):
+                lg=Image.open(lp).convert('RGBA'); k=2  # пиксель-арт: только целый масштаб
+                lg=lg.resize((lg.width*k,lg.height*k),Image.NEAREST)
+                im.paste(lg,((W-lg.width)//2,H//2-60-lg.height//2-40),lg)
+            else:
+                text(im,it[1],110,H//2-110,(255,170,60))
+            text(im,it[2],44,H//2+70,(255,255,255)); text(im,"2peaK's Studio",28,H-70,(200,190,180)); dur=4.0
         p=f'{tmp}/c{i:02d}.png'; im.save(p)
         cmd=['ffmpeg','-y','-v','error','-loop','1','-framerate',str(FPS),'-i',p,'-t',str(dur),
              '-vf',f'fade=t=in:st=0:d=0.3,fade=t=out:st={dur-0.3}:d=0.3,format=yuv420p','-r',str(FPS),'-c:v','libx264','-crf','18',seg]

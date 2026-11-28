@@ -103,14 +103,16 @@ func _show(d: int) -> void:
 	var txt := Label.new()
 	txt.text = tr(e[1])
 	txt.autowrap = true
-	var pf: DynamicFont = (main.font_small if main.get("font_small") else main.font_big).duplicate()
-	pf.outline_size = 0  # тёмные буквы на бумаге без обводки
-	txt.add_font_override("font", pf)
+	txt.add_font_override("font", letter_font(txt.text, 210.0, 200.0))
 	txt.add_color_override("font_color", Color(0.25, 0.15, 0.08))
 	panel.add_child(txt)
-	txt.rect_position = Vector2(222, 34)
-	txt.rect_min_size = Vector2(206, 0)
-	txt.rect_size = Vector2(206, 230)
+	txt.rect_position = Vector2(220, 28)
+	txt.rect_min_size = Vector2(210, 0)
+	txt.rect_size = Vector2(210, 200)
+	# Caveat тонковат: лёгкая тень на полпикселя вбок делает чернила чуть жирнее
+	txt.add_color_override("font_color_shadow", Color(0.25, 0.15, 0.08, 0.45))
+	txt.add_constant_override("shadow_offset_x", 1)
+	txt.add_constant_override("shadow_offset_y", 0)
 	var ok := Button.new()
 	ok.text = tr("Закрыть")
 	ok.add_font_override("font", main.font_big)
@@ -120,6 +122,27 @@ func _show(d: int) -> void:
 	main.ui_block = true
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	ok.call_deferred("grab_focus")
+
+
+# рукописный шрифт письма (Caveat, OFL): крупнее, но уменьшаем, пока текст не влезет в лист
+func letter_font(text: String, w: float, h: float) -> DynamicFont:
+	var f := DynamicFont.new()
+	if ResourceLoader.exists("res://fonts/Caveat.ttf"):
+		f.font_data = load("res://fonts/Caveat.ttf")
+	else:
+		f = (main.font_small if main.get("font_small") else main.font_big).duplicate()
+		f.outline_size = 0
+		return f
+	f.use_filter = true
+	f.extra_spacing_top = -3
+	for sz in [19, 18, 17, 16, 15, 14, 13]:
+		f.size = sz
+		var lines := 0
+		for para in text.split("\n"):
+			lines += max(1, int(ceil(f.get_string_size(para).x / (w - 28.0))))
+		if lines * f.get_height() <= h:
+			break
+	return f
 
 
 func close() -> void:

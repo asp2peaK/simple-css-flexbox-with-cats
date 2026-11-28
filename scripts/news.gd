@@ -3,6 +3,10 @@ extends Reference
 # Новая версия — добавь запись в начало списка (не больше 5 штук показываем).
 
 const NEWS := [
+	["0.15", "Языки и свой склад",
+		"- Немецкий и испанский языки. Язык сам берётся из Steam или системы.\n- Стеллажи можно передвигать, пока пункт закрыт (с коробками!).\n- Декор переставляется только туда, где он к месту: цветы на пол, мелочь на стол.\n- Улучшение «Краски для стеллажей»: перекрашивай секции в свои цвета.\n- Зеркало повесили на уровень глаз и починили отражение.\n- Кот теперь лежит прямо в лежанке.\n- Письма дракона написаны от руки.",
+		"Languages and your own storeroom",
+		"- German and Spanish. The language is picked from Steam or your system.\n- Move shelves while the point is closed (boxes ride along!).\n- Decor only goes where it makes sense: plants on the floor, small things on tables.\n- New upgrade: shelf paints, recolor sections the way you like.\n- The mirror now hangs at eye level and reflects properly.\n- The cat now lies right in its bed.\n- The dragon's letters are handwritten."],
 	["0.14", "Большое обновление пункта",
 		"- Кота на стойке можно гладить: мурчит, и клиенты становятся терпеливее. Не перегладь!\n- Стол возвратов: клиенты приносят посылки назад. Целую коробку в лоток, испорченную не принимай.\n- Письма от владельца сети, дракона Златочешуя: сюжет на всю карьеру.\n- Редкие события посреди смены: инспектор, крысы, потоп, мимик на полке, VIP-клиент.\n- Новые улучшения: быстрая лента, кофемашина, камера от воров, лежанка для кота.\n- Режим ХАРДКОР: 3 злых клиента за смену, и ты уволен.\n- Геймпад, переназначение всех клавиш (и кнопок мыши), режим стримера.\n- Кооп: можно переподключиться в идущую смену, хост ставит паузу для всех.\n- Лог ошибок пишется в файл (Настройки → Папка с логами).",
 		"Big pickup point update",
@@ -27,7 +31,7 @@ const NEWS := [
 
 
 static func build(font: Font, theme: Theme) -> Control:
-	var en: bool = Settings.lang == "en"
+	var en: bool = Settings.latin()
 	var panel := PanelContainer.new()
 	panel.theme = theme
 	panel.rect_position = Vector2(20, 8)

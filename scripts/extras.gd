@@ -17,11 +17,22 @@ func setup(p_main) -> void:
 		cam_on = true
 		_icon_prop("up_camera", Vector3(6.75, 2.75, -0.6), 0.25)
 	if Game.lvl("catbed") > 0 and main.cat and main.cat.spr:
-		var bed: Sprite3D = _icon_prop("up_catbed", Vector3(4.8, 0.98, -0.24), 0.34)
+		# кот сидит В лежанке: вся лежанка за котом, передний бортик отдельным спрайтом перед ним
+		var bed: Sprite3D = _icon_prop("up_catbed", Vector3(4.8, 0.98, -0.05), 0.34)
 		if bed:
-			# кот лежит в лежанке: лежанка спереди, кот чуть выше и за ней
-			main.cat.base_pos.y += 0.19
-			main.cat.spr.translation.y += 0.19
+			var rim := Sprite3D.new()
+			rim.texture = bed.texture
+			rim.pixel_size = bed.pixel_size
+			rim.billboard = bed.billboard
+			rim.alpha_cut = bed.alpha_cut
+			var th: float = bed.texture.get_height()
+			var cut := floor(th * 0.52)
+			rim.region_enabled = true
+			rim.region_rect = Rect2(0, cut, bed.texture.get_width(), th - cut)
+			rim.translation = Vector3(4.8, 0.98 + (th - cut) * bed.pixel_size / 2.0, -0.15)
+			main.add_child(rim)
+			main.cat.base_pos.y += 0.07
+			main.cat.spr.translation.y += 0.07
 
 
 func _icon_prop(name: String, pos: Vector3, h: float) -> Sprite3D:
