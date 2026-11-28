@@ -288,8 +288,57 @@ func _chaos() -> void:
 	get_tree().change_scene("res://main.tscn")
 
 
+var newgame_panel: Control
+
+
 func _new_game() -> void:
-	Game.new_game()
+	if newgame_panel and is_instance_valid(newgame_panel):
+		newgame_panel.queue_free()
+	var pc := PanelContainer.new()
+	pc.theme = load("res://scripts/ui_theme.gd").make()
+	pc.rect_position = Vector2(170, 110)
+	pc.rect_min_size = Vector2(300, 120)
+	add_child(pc)
+	newgame_panel = pc
+	var v := VBoxContainer.new()
+	pc.add_child(v)
+	var l := Label.new()
+	l.text = tr("НОВАЯ ИГРА") + ("\n" + tr("Старая карьера сотрётся!") if Game.has_save() else "")
+	l.align = Label.ALIGN_CENTER
+	l.add_font_override("font", font_big)
+	v.add_child(l)
+	_button(v, tr("Обычная карьера"), "_start_normal")
+	var hb := _button(v, tr("ХАРДКОР: 3 злых клиента за смену — уволен"), "_start_hardcore")
+	hb.add_color_override("font_color", Color(1, 0.45, 0.4))
+	if Game.hc_best > 0:
+		hb.hint_tooltip = tr("Рекорд: смена %d") % Game.hc_best
+		var rl := Label.new()
+		rl.text = tr("Рекорд хардкора: смена %d") % Game.hc_best
+		rl.align = Label.ALIGN_CENTER
+		rl.add_font_override("font", font_big)
+		rl.modulate = Color(1, 1, 1, 0.7)
+		v.add_child(rl)
+	var back := _button(v, tr("Назад"), "_close_newgame")
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+
+
+func _close_newgame() -> void:
+	if newgame_panel and is_instance_valid(newgame_panel):
+		newgame_panel.queue_free()
+
+
+func _start_normal() -> void:
+	_begin_new(false)
+
+
+func _start_hardcore() -> void:
+	_begin_new(true)
+
+
+func _begin_new(hc: bool) -> void:
+	var best := Game.hc_best
+	Game.new_game(hc)
+	Game.hc_best = best
 	Game.phase = "closed"
 	Game.save_game()
 	get_tree().change_scene("res://main.tscn")

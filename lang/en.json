@@ -646,5 +646,16 @@
  "Напарник отключился. Ждём переподключения...": "Partner disconnected. Waiting for them to rejoin...",
  "Напарник заходит...": "Partner is joining...",
  "Напарник снова в игре!": "Your partner is back!",
- "Хост поставил паузу": "The host paused the game"
+ "Хост поставил паузу": "The host paused the game",
+ "НОВАЯ ИГРА": "NEW GAME",
+ "Старая карьера сотрётся!": "Your old career will be erased!",
+ "Обычная карьера": "Normal career",
+ "ХАРДКОР: 3 злых клиента за смену — уволен": "HARDCORE: 3 angry customers in a shift and you're fired",
+ "Рекорд: смена %d": "Record: shift %d",
+ "Рекорд хардкора: смена %d": "Hardcore record: shift %d",
+ "ХАРДКОР: ещё один злой клиент — и тебя уволят!": "HARDCORE: one more angry customer and you're fired!",
+ "УВОЛЕН!\n\nТри злых клиента за смену. Гильдия забрала ключи.\nТы дошёл до смены %d.": "FIRED!\n\nThree angry customers in one shift. The Guild took your keys.\nYou made it to shift %d.",
+ "НОВЫЙ РЕКОРД ХАРДКОРА!": "NEW HARDCORE RECORD!",
+ "Карьера начнётся заново с первой смены.": "Your career starts over from shift 1.",
+ "ХАРДКОР": "HARDCORE"
 }

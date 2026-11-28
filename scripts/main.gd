@@ -241,6 +241,8 @@ func _ready() -> void:
 		_screenshot_mode()
 	if "--rejointest" in OS.get_cmdline_args():
 		_rejoin_test()
+	if "--hctest" in OS.get_cmdline_args():
+		_hc_test()
 	for a in OS.get_cmdline_args():
 		if a.begins_with("--showcase="):
 			var sc = load("res://scripts/showcase.gd").new()
@@ -303,6 +305,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not shift_over or shop_panel.visible or net_client():
 		return
 	if event.is_action_pressed("restart"):
+		if hc_fired or (hardcore_on() and not chaos_over):
+			return
 		if chaos_over:
 			_open_shop()
 		else:
@@ -1245,6 +1249,7 @@ func _on_customer_left(happy: bool, c) -> void:
 		var fine := 5 - 2 * Game.lvl("bell")
 		money = int(max(0, money - fine))
 		_flash(tr("Клиент ушёл злой. -%d монет") % fine, 2.0)
+		_hardcore_check()
 	_customer_gone(c)
 
 
@@ -1352,6 +1357,7 @@ func _press_kick(btn) -> void:
 		streak = 0
 		_flash(tr("Это был честный клиент! -10 монет"), 2.5)
 		c.leave_kicked(tr("За что?! Я с настоящим чеком!"))
+		_hardcore_check()
 	_refresh_hud()
 
 
@@ -2182,6 +2188,8 @@ func _quit() -> void:
 
 
 func _retry() -> void:
+	if hc_fired or hardcore_on():
+		return
 	if chaos_over:
 		_to_menu()
 		return
@@ -2574,6 +2582,11 @@ func _refresh_hud() -> void:
 		hud_stats.text = tr("%d    ХАОС    Выдано: %d    Клиент %d/%d") % [money, served, spawned, total_customers]
 	else:
 		hud_stats.text = tr("%d    Смена %d    Реп. %d    Выдано: %d    Клиент %d/%d") % [Game.bank + money, Game.day, Game.rep, served, spawned, total_customers]
+		if hardcore_on():
+			var marks := ""
+			for k in 3:
+				marks += "✖" if k < failed else "○"
+			hud_stats.text += "    " + tr("ХАРДКОР") + " " + marks
 	if hud_tasks:
 		_refresh_tasks()
 	# номер заказа видно, только когда клиент подошёл и назвал его
@@ -4455,4 +4468,77 @@ func _rejoin_test() -> void:
 			_save(dir + "/rj_client.png")
 	if Net.is_host:
 		_save(dir + "/rj_host.png")
+	get_tree().quit()
+
+
+# ---------------------------------------------------------------- хардкор
+var hc_fired := false
+
+
+func hardcore_on() -> bool:
+	return Game.hardcore and Game.mode == "career" and not net_client()
+
+
+func _hardcore_check() -> void:
+	if not hardcore_on() or shift_over:
+		return
+	_refresh_hud()
+	if failed == 2:
+		_flash(tr("ХАРДКОР: ещё один злой клиент — и тебя уволят!"), 3.0)
+		Sfx.play("siren", 0.0, -6.0)
+	if failed >= 3:
+		_hardcore_fired()
+
+
+func _hardcore_fired() -> void:
+	hc_fired = true
+	shift_over = true
+	Sfx.play("shift_end", 0.0, -2.0)
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	var reached := Game.day
+	var record := reached > Game.hc_best
+	Game.hc_best = max(Game.hc_best, reached)
+	# карьера сначала, рекорд остаётся
+	var best := Game.hc_best
+	Game.new_game(true)
+	Game.hc_best = best
+	Game.tutorial_done = true
+	Game.phase = "closed"
+	Game.save_game()
+	hud_tut.visible = false
+	end_buttons.visible = true
+	for b in end_buttons.get_children():
+		if b is Control:
+			b.visible = false
+	var txt := tr("УВОЛЕН!\n\nТри злых клиента за смену. Гильдия забрала ключи.\nТы дошёл до смены %d.") % reached
+	txt += "\n" + (tr("НОВЫЙ РЕКОРД ХАРДКОРА!") if record else tr("Рекорд: смена %d") % Game.hc_best)
+	txt += "\n\n" + tr("Карьера начнётся заново с первой смены.")
+	hud_panel_text.text = txt
+	hud_panel_side.text = ""
+	hud_panel.visible = true
+	_hc_menu_button()
+	if Net.active:
+		rpc("net_end_shift", txt)
+
+
+func _hc_menu_button() -> void:
+	var b := _button(end_buttons, tr("В меню"), "_to_menu")
+	b.visible = true
+
+
+func _hc_test() -> void:
+	Game.hardcore = true
+	Game.day = 4
+	yield(get_tree().create_timer(2.0), "timeout")
+	failed = 1
+	_refresh_hud()
+	_save(OS.get_environment("SHOT_DIR") + "/hc_hud.png")
+	failed = 2
+	_hardcore_check()
+	yield(get_tree().create_timer(1.0), "timeout")
+	failed = 3
+	_hardcore_check()
+	yield(get_tree().create_timer(1.0), "timeout")
+	print("fired=", hc_fired, " day now=", Game.day, " best=", Game.hc_best, " hardcore=", Game.hardcore)
+	_save(OS.get_environment("SHOT_DIR") + "/hc_fired.png")
 	get_tree().quit()

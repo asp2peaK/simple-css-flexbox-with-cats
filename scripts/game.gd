@@ -49,6 +49,8 @@ var record := ""  # пластинка на проигрывателе ("" = о�
 var tasks := []  # задания текущей смены
 var tasks_day := 0
 var career_done := false
+var hardcore := false  # хардкор: 3 злых клиента за смену — уволен, карьера сначала
+var hc_best := 0  # рекорд хардкора: до какой смены дошёл
 var phase := "open"  # closed = пункт закрыт между сменами
 var decor_pos := {}  # куда игрок переставил декор: ключ -> [x, y, z]
 var last_reviews := []  # отзывы прошлой смены (для доски объявлений)
@@ -220,7 +222,8 @@ func roll_event() -> void:
 			event = fav
 
 
-func new_game() -> void:
+func new_game(p_hardcore := false) -> void:
+	hardcore = p_hardcore
 	day = 1
 	bank = 0
 	upgrades = {}
@@ -255,7 +258,7 @@ func save_game() -> void:
 		"seen_kinds": seen_kinds, "tutorial_done": tutorial_done, "rep": rep, "tokens": tokens,
 		"decor": decor, "record": record, "tasks": tasks, "tasks_day": tasks_day,
 		"career_done": career_done, "chaos_best": chaos_best, "decor_pos": decor_pos,
-		"last_reviews": last_reviews}))
+		"last_reviews": last_reviews, "hardcore": hardcore, "hc_best": hc_best}))
 	f.close()
 
 
@@ -282,5 +285,7 @@ func load_game() -> bool:
 	chaos_best = int(d.get("chaos_best", 0))
 	decor_pos = d.get("decor_pos", {})
 	last_reviews = d.get("last_reviews", [])
+	hardcore = bool(d.get("hardcore", false))
+	hc_best = int(d.get("hc_best", 0))
 	mode = "career"
 	return true
