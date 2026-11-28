@@ -65,7 +65,7 @@ func _scan(dir: String) -> void:
 				mods.append({"name": nm.get_basename(), "author": "", "version": "",
 					"description": "", "path": p, "kind": "pck"})
 			else:
-				errors.append("не удалось загрузить " + p)
+				errors.append("can't load " + p)
 
 
 func _json(path: String):
@@ -75,7 +75,7 @@ func _json(path: String):
 	var r := JSON.parse(f.get_as_text())
 	f.close()
 	if r.error != OK:
-		errors.append("%s: строка %d: %s" % [path, r.error_line, r.error_string])
+		errors.append("%s: line %d: %s" % [path, r.error_line, r.error_string])
 		return null
 	return r.result
 
@@ -129,7 +129,7 @@ func _load_folder(p: String, nm: String) -> void:
 					if typeof(s) == TYPE_STRING and s.count("%s") == 1 and s.count("%") == 1:
 						lines[kind][lc].append(s)
 					else:
-						errors.append("%s: фраза без одного %%s: %s" % [nm, str(s)])
+						errors.append("%s: a line needs exactly one %%s: %s" % [nm, str(s)])
 	mods.append(m)
 
 

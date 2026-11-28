@@ -3,7 +3,7 @@
 Mods live in a `mods` folder. The game looks in two places:
 
 1. `mods/` next to `NotMyParcel.exe` (for Steam: right-click the game, Manage, Browse local files).
-2. The user folder: main menu, **Mods**, **Open mods folder** (`%APPDATA%/Godot/app_userdata/NOT MY PARCEL!/mods` or similar).
+2. The user folder: main menu, **Mods**, **Open mods folder** (`%APPDATA%/punkt_vydachi/mods` on Windows).
 
 Mods load in alphabetical order; a later mod wins. Start the game with `--nomods` to turn all mods off.
 The **Mods** button in the main menu lists what loaded and shows errors.

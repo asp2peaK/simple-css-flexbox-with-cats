@@ -736,5 +736,6 @@
  "Моды": "Mods",
  "Моды выключены (--nomods)": "Mods sind deaktiviert (--nomods)",
  "Модов пока нет. Положи мод в папку mods рядом с игрой или в папку ниже. Как их делать, написано в MODDING.md.": "Noch keine Mods. Lege einen Mod in den Ordner mods neben dem Spiel oder in den Ordner unten. Wie man Mods macht, steht in MODDING.md.",
- "Открыть папку модов": "Mod-Ordner öffnen"
+ "Открыть папку модов": "Mod-Ordner öffnen",
+ "Сначала поставь то, что несёшь (ПКМ — вернуть на место).": "Stell erst ab, was du trägst (RMB legt es zurück)."
 }

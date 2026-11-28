@@ -1754,6 +1754,13 @@ func _unfreeze(b) -> void:
 		b.linear_velocity = Vector3.ZERO
 
 
+# выданная посылка исчезает: убираем и из списка, чтобы циклы не наткнулись на удалённый объект
+func _free_parcel(p) -> void:
+	parcels.erase(p)
+	if is_instance_valid(p):
+		p.queue_free()
+
+
 func _deliver(p, c, penalty: int) -> void:
 	if c.kind == "thief" and c.grabber and c.state == "at_counter":
 		# вор хватает посылку и сбегает, не заплатив
@@ -1765,7 +1772,7 @@ func _deliver(p, c, penalty: int) -> void:
 	p.fuse = -1.0
 	var tw := create_tween()
 	tw.tween_property(p, "global_transform:origin", c.global_transform.origin + Vector3(0, 1.0, 0), 0.4)
-	tw.tween_callback(p, "queue_free")
+	tw.tween_callback(self, "_free_parcel", [p])
 	if tut_step >= 0 and tut_step < 3:
 		tut_step = 3
 	if c.scammer:
@@ -2918,6 +2925,7 @@ func _flip_sign(_b) -> void:
 		_flash(tr("Пункт уже открыт!"), 1.2)
 		return
 	if carrying:
+		_flash(tr("Сначала поставь то, что несёшь (ПКМ — вернуть на место)."), 1.8)
 		return
 	sign_spr.texture = tex("props/sign_open", false)
 	for ch in sign_spr.get_children():
