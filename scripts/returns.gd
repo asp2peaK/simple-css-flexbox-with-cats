@@ -76,7 +76,7 @@ func on_arrived(c) -> void:
 		_decal(p, dmg)
 	# бланк возврата рядом
 	if ResourceLoader.exists("res://assets/props/return_form.png"):
-		var f: Sprite3D = main.prop("return_form", Vector3(at.x + 0.38, 0.985, -0.05), 0, 0.16)
+		var f: Sprite3D = main.prop("return_form", Vector3(at.x + 0.38, 0.985, -0.05), 0, 0.2)
 		f.axis = Vector3.AXIS_Y
 		f.translation.y = 0.99
 		c.set_meta("ret_form", f)

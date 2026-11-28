@@ -5,29 +5,29 @@ S=os.environ.get('MEDIA','/tmp/gs/media')  # клипы лежат в $MEDIA/cli
 lang=sys.argv[1]; out=sys.argv[2]
 FONT=ROOT+'/fonts/DejaVuSans-Bold.ttf'
 T={'en':[('card','You run a parcel pickup point...'),('clip','counter',6),
- ('card','...for witches, orcs and skeletons'),('clip','warehouse',5),
- ('card','Spot the scammers'),('clip','scam',5),
- ('card','Handle returns. No muddy boxes!'),('clip','returns',5),
- ('card','Play co-op with friends'),('clip','coop',5),
- ('card','Pet the cat. Carefully.'),('clip','cat',5),
- ('card','Rats! Floods! Inspectors!'),('clip','rats',5),
+ ('card','...for witches, orcs and skeletons'),('clip','warehouse',4),
+ ('card','Spot the scammers'),('clip','scam',4),
+ ('card','Handle returns. No muddy boxes!'),('clip','returns',4),
+ ('card','Play co-op with friends'),('clip','coop',4),
+ ('card','Pet the cat. Carefully.'),('clip','cat',4),
+ ('card','Rats! Floods! Inspectors!'),('clip','rats',4),
  ('card','Letters from your dragon boss'),('clip','letter',4),
- ('card','Survive Chaos Mode'),('clip','chaos',5),
- ('card','Decorate your shop'),('clip','decor',5),
- ('card','Dress up in the magic mirror'),('clip','mirror',7),
+ ('card','Survive Chaos Mode'),('clip','chaos',4),
+ ('card','Decorate your shop'),('clip','decor',4),
+ ('card','Dress up in the magic mirror'),('clip','mirror',6),
  ('card','Beware the Dark Postmaster'),('clip','boss',6),
  ('end','NOT MY PARCEL!','Wishlist now on Steam')],
  'ru':[('card','Ты работаешь в пункте выдачи...'),('clip','counter',6),
- ('card','...для ведьм, орков и скелетов'),('clip','warehouse',5),
- ('card','Лови мошенников'),('clip','scam',5),
- ('card','Принимай возвраты. Грязные не бери!'),('clip','returns',5),
- ('card','Играй вместе с друзьями'),('clip','coop',5),
- ('card','Гладь кота. Осторожно.'),('clip','cat',5),
- ('card','Крысы! Потопы! Инспекторы!'),('clip','rats',5),
+ ('card','...для ведьм, орков и скелетов'),('clip','warehouse',4),
+ ('card','Лови мошенников'),('clip','scam',4),
+ ('card','Принимай возвраты. Грязные не бери!'),('clip','returns',4),
+ ('card','Играй вместе с друзьями'),('clip','coop',4),
+ ('card','Гладь кота. Осторожно.'),('clip','cat',4),
+ ('card','Крысы! Потопы! Инспекторы!'),('clip','rats',4),
  ('card','Письма от босса-дракона'),('clip','letter',4),
- ('card','Выживи в режиме хаоса'),('clip','chaos',5),
- ('card','Укрась свой пункт'),('clip','decor',5),
- ('card','Наряжайся у волшебного зеркала'),('clip','mirror',7),
+ ('card','Выживи в режиме хаоса'),('clip','chaos',4),
+ ('card','Укрась свой пункт'),('clip','decor',4),
+ ('card','Наряжайся у волшебного зеркала'),('clip','mirror',6),
  ('card','Берегись Тёмного Почтмейстера'),('clip','boss',6),
  ('end','NOT MY PARCEL!','Добавь в желаемое в Steam')]}[lang]
 W,H=1280,720; FPS=30
@@ -61,9 +61,9 @@ for i,it in enumerate(T):
 open(f'{tmp}/list.txt','w').write(''.join(f"file '{s}'\n" for s in segs))
 subprocess.run(['ffmpeg','-y','-v','error','-f','concat','-safe','0','-i',f'{tmp}/list.txt','-c','copy',f'{tmp}/video.mp4'],check=True)
 dur=float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0',f'{tmp}/video.mp4']))
-M=ROOT+'/assets/sfx/'
-subprocess.run(['ffmpeg','-y','-v','error','-i',M+'music_game.wav','-i',M+'music_chaos.wav','-i',M+'music_boss.wav',
- '-filter_complex',f'[0][1]acrossfade=d=1.5[a];[a][2]acrossfade=d=1.5,atrim=0:{dur},afade=t=in:d=0.5,afade=t=out:st={dur-2.5}:d=2.5[m]',
- '-map','[m]','-c:a','aac','-b:a','192k',f'{tmp}/music.m4a'],check=True)
+# своя музыка трейлера: tools/synth_trailer_music.py (такт = 2 с, разделы совпадают с монтажом)
+mus=f'{tmp}/trailer_music.wav'
+subprocess.run([sys.executable,ROOT+'/tools/synth_trailer_music.py',mus],check=True)
+subprocess.run(['ffmpeg','-y','-v','error','-i',mus,'-af',f'atrim=0:{dur},afade=t=out:st={dur-1.5}:d=1.5','-c:a','aac','-b:a','192k',f'{tmp}/music.m4a'],check=True)
 subprocess.run(['ffmpeg','-y','-v','error','-i',f'{tmp}/video.mp4','-i',f'{tmp}/music.m4a','-c:v','copy','-c:a','copy','-shortest','-movflags','+faststart',out],check=True)
 print(out, round(dur,1),'s')

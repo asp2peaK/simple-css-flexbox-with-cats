@@ -175,11 +175,11 @@ func _spawn_rat(k: int) -> void:
 	s.texture = _rat_tex(0)
 	if s.texture == null:
 		return
-	s.pixel_size = 0.22 / s.texture.get_height()
+	s.pixel_size = 0.14 / s.texture.get_height()
 	s.billboard = SpatialMaterial.BILLBOARD_FIXED_Y
 	s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 	main.add_child(s)
-	s.global_transform.origin = HOLE + Vector3(0, 0.11, -k * 0.4)
+	s.global_transform.origin = HOLE + Vector3(0, 0.07, -k * 0.4)
 	rats.append([s, null, "hunt", null, k * 1.5])
 
 
@@ -258,7 +258,7 @@ func _update_rats(delta: float) -> void:
 		var spd := 2.6 if r[2] == "flee" else 1.7
 		if dir.length() > 0.05:
 			var step: Vector3 = dir.normalized() * min(dir.length(), spd * delta)
-			s.global_transform.origin = Vector3(pos.x + step.x, 0.11, pos.z + step.z)
+			s.global_transform.origin = Vector3(pos.x + step.x, 0.07, pos.z + step.z)
 			# смотрит в сторону бега (кадры нарисованы влево)
 			var cam = main.get_viewport().get_camera()
 			if cam:

@@ -551,7 +551,7 @@ func _build_props() -> void:
 	var cat_name := "cat"
 	if Game.decor.has("cat_hat") and ResourceLoader.exists("res://assets/props/cat_hat.png"):
 		cat_name = "cat_hat"
-	var cat_spr := prop(cat_name, Vector3(4.8, 0.98, -0.1), 0, 0.42 if cat_name == "cat" else 0.6, true)
+	var cat_spr := prop(cat_name, Vector3(4.8, 0.98, -0.1), 0, 0.3 if cat_name == "cat" else 0.6, true)
 	cat = load("res://scripts/cat.gd").new()
 	add_child(cat)
 	cat.setup(self, cat_spr, cat_name != "cat")

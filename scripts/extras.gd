@@ -15,13 +15,13 @@ func setup(p_main) -> void:
 			main._clickable(cm, Vector3(0.16, 0.2, 0.16), tr("[ЛКМ/E] Кофемашина: чашка кофе (15 с бега, раз за смену)"), "_drink_coffee")
 	if Game.lvl("camera") > 0:
 		cam_on = true
-		_icon_prop("up_camera", Vector3(6.75, 2.75, -0.6), 0.35)
+		_icon_prop("up_camera", Vector3(6.75, 2.75, -0.6), 0.25)
 	if Game.lvl("catbed") > 0 and main.cat and main.cat.spr:
-		var bed: Sprite3D = _icon_prop("up_catbed", Vector3(4.8, 0.98, -0.24), 0.3)
+		var bed: Sprite3D = _icon_prop("up_catbed", Vector3(4.8, 0.98, -0.24), 0.34)
 		if bed:
 			# кот лежит в лежанке: лежанка спереди, кот чуть выше и за ней
-			main.cat.base_pos.y += 0.15
-			main.cat.spr.translation.y += 0.15
+			main.cat.base_pos.y += 0.19
+			main.cat.spr.translation.y += 0.19
 
 
 func _icon_prop(name: String, pos: Vector3, h: float) -> Sprite3D:
