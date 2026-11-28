@@ -12,28 +12,39 @@ func build(f: Font) -> void:
 	if font is DynamicFont:
 		font.outline_size = 0  # тёмный текст на пергаменте без обводки
 	pause_mode = Node.PAUSE_MODE_PROCESS
-	rect_position = Vector2(150, 30)
-	rect_min_size = Vector2(340, 290)
+	# две колонки, чтобы всё влезало в 640x360 при любом размере окна
+	rect_position = Vector2(14, 24)
+	rect_min_size = Vector2(612, 0)
 	var v := VBoxContainer.new()
 	add_child(v)
 	_title(v, tr("НАСТРОЙКИ"))
-	_slider(v, tr("Музыка"), Settings.music, "_on_music")
-	_slider(v, tr("Звуки"), Settings.sfx, "_on_sfx")
-	_slider(v, tr("Чувствительность мыши"), (Settings.sens - 0.3) / 1.7, "_on_sens")
+	var cols := HBoxContainer.new()
+	cols.add_constant_override("separation", 14)
+	v.add_child(cols)
+	var left := VBoxContainer.new()
+	cols.add_child(left)
+	var right := VBoxContainer.new()
+	cols.add_child(right)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	left.add_child(grid)
+	_slider(grid, tr("Музыка"), Settings.music, "_on_music")
+	_slider(grid, tr("Звуки"), Settings.sfx, "_on_sfx")
+	_slider(grid, tr("Чувствительность мыши"), (Settings.sens - 0.3) / 1.7, "_on_sens")
 	var fs := CheckBox.new()
 	fs.text = tr("Полный экран")
 	fs.pressed = Settings.fullscreen
 	fs.add_font_override("font", font)
 	fs.connect("toggled", self, "_on_fs")
-	v.add_child(fs)
+	left.add_child(fs)
 	var vs := CheckBox.new()
 	vs.text = tr("Вертикальная синхронизация")
 	vs.pressed = Settings.vsync
 	vs.add_font_override("font", font)
 	vs.connect("toggled", self, "_on_vsync")
-	v.add_child(vs)
+	left.add_child(vs)
 	var row := HBoxContainer.new()
-	v.add_child(row)
+	right.add_child(row)
 	var l := Label.new()
 	l.text = tr("Размер окна  ")
 	l.add_font_override("font", font)
@@ -46,7 +57,7 @@ func build(f: Font) -> void:
 	ob.connect("item_selected", self, "_on_res")
 	row.add_child(ob)
 	var row2 := HBoxContainer.new()
-	v.add_child(row2)
+	right.add_child(row2)
 	var l2 := Label.new()
 	l2.text = tr("Картинка  ")
 	l2.add_font_override("font", font)
@@ -59,7 +70,7 @@ func build(f: Font) -> void:
 	q.connect("item_selected", self, "_on_sharp")
 	row2.add_child(q)
 	var row3 := HBoxContainer.new()
-	v.add_child(row3)
+	right.add_child(row3)
 	var l3 := Label.new()
 	l3.text = tr("Язык / Language  ")
 	l3.add_font_override("font", font)
@@ -72,7 +83,7 @@ func build(f: Font) -> void:
 	lg.connect("item_selected", self, "_on_lang")
 	row3.add_child(lg)
 	var row4 := HBoxContainer.new()
-	v.add_child(row4)
+	right.add_child(row4)
 	var l4 := Label.new()
 	l4.text = tr("Twitch-канал  ")
 	l4.add_font_override("font", font)
@@ -81,7 +92,7 @@ func build(f: Font) -> void:
 	tw.text = Settings.twitch
 	tw.placeholder_text = tr("ник канала")
 	tw.secret = Settings.streamer
-	tw.rect_min_size = Vector2(170, 0)
+	tw.rect_min_size = Vector2(150, 0)
 	tw.add_font_override("font", font)
 	tw.connect("text_entered", self, "_on_twitch")
 	tw.connect("focus_exited", self, "_on_twitch_focus", [tw])
@@ -91,6 +102,7 @@ func build(f: Font) -> void:
 	kb.add_font_override("font", font)
 	kb.connect("pressed", self, "_open_keys")
 	var row5 := HBoxContainer.new()
+	row5.alignment = BoxContainer.ALIGN_CENTER
 	v.add_child(row5)
 	row5.add_child(kb)
 	var lb := Button.new()
@@ -103,12 +115,12 @@ func build(f: Font) -> void:
 	sm.pressed = Settings.streamer
 	sm.add_font_override("font", font)
 	sm.connect("toggled", self, "_on_streamer")
-	v.add_child(sm)
+	left.add_child(sm)
 	var close := Button.new()
 	close.text = tr("Готово")
 	close.add_font_override("font", font)
 	close.connect("pressed", self, "_close")
-	v.add_child(close)
+	row5.add_child(close)
 
 
 func _on_streamer(on: bool) -> void:
@@ -138,12 +150,9 @@ func _title(v: Control, t: String) -> void:
 	v.add_child(l)
 
 
-func _slider(v: Control, text: String, value: float, cb: String) -> void:
-	var row := HBoxContainer.new()
-	v.add_child(row)
+func _slider(row: Control, text: String, value: float, cb: String) -> void:
 	var l := Label.new()
 	l.text = text
-	l.rect_min_size = Vector2(150, 0)
 	l.add_font_override("font", font)
 	row.add_child(l)
 	var s := HSlider.new()
@@ -151,7 +160,7 @@ func _slider(v: Control, text: String, value: float, cb: String) -> void:
 	s.max_value = 1
 	s.step = 0.05
 	s.value = value
-	s.rect_min_size = Vector2(160, 16)
+	s.rect_min_size = Vector2(110, 16)
 	s.connect("value_changed", self, cb)
 	row.add_child(s)
 

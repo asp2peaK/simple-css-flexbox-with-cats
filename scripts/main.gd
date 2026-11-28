@@ -2519,12 +2519,13 @@ func _build_hud() -> void:
 	hud_panel_text.rect_min_size = Vector2(230, 0)
 	ph.add_child(hud_panel_text)
 	var fs: DynamicFont = font_big.duplicate()
-	fs.size = 10
+	fs.size = 12
 	fs.outline_size = 0
+	fs.use_filter = true  # на части видеокарт мелкий шрифт при нецелом масштабе терял верхние палочки (Т, Г, п)
 	hud_panel_side = Label.new()
 	hud_panel_side.add_font_override("font", fs)
 	hud_panel_side.autowrap = true
-	hud_panel_side.valign = Label.VALIGN_CENTER
+	hud_panel_side.valign = Label.VALIGN_TOP
 	hud_panel_side.rect_min_size = Vector2(350, 0)
 	hud_panel_side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ph.add_child(hud_panel_side)
@@ -2734,9 +2735,9 @@ func _build_closed_props() -> void:
 	lt.shaded = false
 	_clickable(lt, Vector3(0.36, 0.3, 0.3), tr("[ЛКМ/E] Ноутбук: магазин улучшений и декора"), "_open_laptop")
 	# раскладушка между стеллажами
-	var cot := prop("cot", Vector3(0, 0.0, -5.05), 0, 0.95)
-	solid(Vector3(1.6, 0.55, 0.6), Vector3(0, 0.275, -5.05), null)
-	_clickable(cot, Vector3(0.85, 0.45, 0.35), tr("[ЛКМ/E] Раскладушка: сохраниться и выйти в меню"), "_sleep")
+	var cot := prop("cot", Vector3(0.75, 0.0, -5.05), 0, 1.1)
+	solid(Vector3(1.85, 0.62, 0.68), Vector3(0.75, 0.31, -5.05), null)
+	_clickable(cot, Vector3(0.98, 0.52, 0.4), tr("[ЛКМ/E] Раскладушка: сохраниться и выйти в меню"), "_sleep")
 	# доска объявлений над ларём
 	var bd := prop("board", Vector3(6.88, 1.45, -3.2), -PI / 2, 0.75)
 	_clickable(bd, Vector3(0.5, 0.36, 0.05), tr("[ЛКМ/E] Доска объявлений: задания, отзывы, район"), "_read_board")

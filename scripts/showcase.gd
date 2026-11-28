@@ -356,3 +356,31 @@ func rats() -> void:
 	eye = 0.5
 	_dolly(Vector3(3.6, 0.0, -1.9), Vector3(5.8, 0.15, -2.2), Vector3(3.9, 0.0, -1.7), Vector3(6.0, 0.15, -2.0))
 	_start()
+
+
+func mirror0() -> void:
+	# зеркало с внешностью по умолчанию (проверка нового игрока)
+	if m.mirror == null:
+		get_tree().quit()
+		return
+	var mp: Vector3 = m.mirror.global_transform.origin
+	_dolly(mp + Vector3(0.5, 0.05, 2.2), mp + Vector3(0, 1.2, 0), mp + Vector3(0.25, 0.05, 1.6), mp + Vector3(0, 1.2, 0))
+	_start()
+	yield(_wait(0.3), "timeout")
+	print("look=", Settings.look, " doll_look=", m.mirror.doll.look)
+	m.mirror.open()
+
+
+func board() -> void:
+	# доска объявлений (проверка текста)
+	hud = true
+	yield(_wait(1.0), "timeout")
+	m._read_board(null)
+	_start()
+
+
+func layout() -> void:
+	# склад сверху: стеллажи, зеркало, раскладушка (проверка расстановки)
+	eye = 3.0
+	_dolly(Vector3(0, 0.05, -1.0), Vector3(0, 0, -7.0), Vector3(0, 0.05, -1.0), Vector3(0, 0, -7.0))
+	_start()
