@@ -902,7 +902,7 @@ func _new_parcel(i: int):
 		if cow_tex:
 			var cs := Sprite3D.new()
 			cs.texture = cow_tex
-			cs.pixel_size = 1.2 / cow_tex.get_width()
+			cs.pixel_size = 0.9 / cow_tex.get_width()
 			cs.billboard = SpatialMaterial.BILLBOARD_FIXED_Y
 			cs.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 			cs.translation.y = sz.y * 0.5

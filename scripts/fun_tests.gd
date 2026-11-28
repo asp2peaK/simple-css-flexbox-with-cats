@@ -29,6 +29,9 @@ func _place(pos: Vector3, rot: float, pitch := 0.0) -> void:
 
 func _duo_parcel():
 	for p in main.parcels:
+		if is_instance_valid(p) and p.box_type == "cow" and not p.delivered:
+			return p
+	for p in main.parcels:
 		if is_instance_valid(p) and p.duo and not p.delivered and not p.from_portal:
 			return p
 	return null

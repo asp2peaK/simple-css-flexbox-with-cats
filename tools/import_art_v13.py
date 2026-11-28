@@ -39,3 +39,21 @@ def down_poses():
 
 if __name__ == "__main__":
     down_poses()
+    fx_and_cow()
+
+
+def fx_and_cow():
+    # лист 62: звёздочка (4 кадра) + значки проклятий
+    a = clean_specks(load_rgba(62))
+    it = find_items(a, 2, 4)
+    for k, b in enumerate(it[:4]):
+        save(crop_scaled(a, b, 16.0 / (b[3] - b[1])), "fx/star_%d.png" % k)
+    for name, b in zip(["invert", "bighead", "oink", "glue"], it[4:8]):
+        save(crop_scaled(a, b, 30.0 / (b[3] - b[1])), "ui/curse_%s.png" % name)
+    # лист 63: корова над краем ящика (спокойная / мычит)
+    a = clean_specks(load_rgba(63))
+    it = find_items(a, 1, 2)
+    h = it[0][3] - it[0][1]
+    for name, b in zip(["cow_crate", "cow_crate_moo"], it):
+        save(crop_scaled(a, b, 60.0 / h), "props/%s.png" % name)
+    print("fx/cow ok", len(it))
