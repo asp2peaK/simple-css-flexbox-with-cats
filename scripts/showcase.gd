@@ -15,6 +15,7 @@ var _cam_to := []
 var _move := []  # [узел, откуда, куда]
 var _track = null  # камера следит за этим узлом
 var hud := false
+var follow := false  # камера едет за _track на расстоянии ~1 м
 var eye := -1.0  # своя высота камеры (для низких ракурсов)
 
 
@@ -54,8 +55,15 @@ func _process(delta: float) -> void:
 			m.player.global_transform.origin = _cam_from[0].linear_interpolate(_cam_to[0], k)
 			m.player.rotation = Vector3(0, lerp_angle(_cam_from[1], _cam_to[1], k), 0)
 			m.player.cam.rotation.x = lerp(_cam_from[2], _cam_to[2], k)
+		if follow and _track and is_instance_valid(_track):
+			var tp: Vector3 = _track.global_transform.origin
+			var cp: Vector3 = m.player.global_transform.origin
+			var off := Vector3(cp.x - tp.x, 0, cp.z - tp.z)
+			if off.length() > 0.01:
+				var want: Vector3 = tp + off.normalized() * 1.0
+				m.player.global_transform.origin = cp.linear_interpolate(Vector3(want.x, cp.y, want.z), min(1.0, delta * 3.0))
 		if _track and is_instance_valid(_track):
-			_aim(_track.global_transform.origin + Vector3(0, 0.3, 0))
+			_aim(_track.global_transform.origin + Vector3(0, 0.3 if eye < 0.0 else 0.1, 0))
 		for mv in _move:
 			if is_instance_valid(mv[0]):
 				var pos: Vector3 = mv[1].linear_interpolate(mv[2], clamp(_t / length, 0.0, 1.0))
@@ -348,13 +356,20 @@ func rats() -> void:
 			p.global_transform.origin = spots[k]
 			p.linear_velocity = Vector3.ZERO
 			k += 1
-	m.player.global_transform.origin = Vector3(3.6, 0.0, -1.9)
+	m.player.global_transform.origin = Vector3(4.5, 0.0, -1.7)
 	m.rare.event = "rats"
+	m.rare.scared = false
 	m.rare.fire_at = -1.0
 	m.rare._start()
 	yield(_wait(3.0), "timeout")
-	eye = 0.5
-	_dolly(Vector3(3.6, 0.0, -1.9), Vector3(5.8, 0.15, -2.2), Vector3(3.9, 0.0, -1.7), Vector3(6.0, 0.15, -2.0))
+	eye = 0.3
+	_dolly(Vector3(4.5, 0.0, -1.7), Vector3(6.0, 0.08, -2.2), Vector3(4.8, 0.0, -1.6), Vector3(6.2, 0.08, -1.8))
+	for r in m.rare.rats:
+		if is_instance_valid(r[0]) and r[4] <= 0.0:
+			_track = r[0]
+			break
+	follow = true
+	_cam_from = []
 	_start()
 
 
@@ -383,4 +398,16 @@ func layout() -> void:
 	# склад сверху: стеллажи, зеркало, раскладушка (проверка расстановки)
 	eye = 3.0
 	_dolly(Vector3(0, 0.05, -1.0), Vector3(0, 0, -7.0), Vector3(0, 0.05, -1.0), Vector3(0, 0, -7.0))
+	_start()
+
+
+func flood() -> void:
+	# редкое событие: потоп, лужи на складе
+	yield(_wait(1.0), "timeout")
+	m.rare.event = "flood"
+	m.rare.fire_at = -1.0
+	m.rare._start()
+	m.rare._slip_cd = 999.0  # в кадре не падаем
+	yield(_wait(1.5), "timeout")
+	_dolly(Vector3(1.2, 0.05, -0.9), Vector3(0.0, 0.0, -2.6), Vector3(0.6, 0.05, -1.3), Vector3(-0.8, 0.0, -2.8))
 	_start()

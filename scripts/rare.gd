@@ -31,6 +31,7 @@ var _rat_anim := 0.0
 # лужи: [sprite, pos]
 var puddles := []
 var _slip_cd := 0.0
+var scared := true  # крысы убегают от игрока (для съёмки трейлера выключаем)
 
 
 func setup(p_main) -> void:
@@ -248,7 +249,7 @@ func _update_rats(delta: float) -> void:
 				r[2] = "hunt"
 				r[4] = 4.0
 		# игрок рядом: бросает коробку и удирает
-		if r[2] != "flee" and Vector2(pl_pos.x - pos.x, pl_pos.z - pos.z).length() < 0.9:
+		if scared and r[2] != "flee" and Vector2(pl_pos.x - pos.x, pl_pos.z - pos.z).length() < 0.9:
 			if r[2] == "carry":
 				_rat_drop(r)
 				main._flash(tr("Поймал! Крыса бросила коробку."), 1.5)
