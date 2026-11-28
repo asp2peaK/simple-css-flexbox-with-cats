@@ -93,6 +93,7 @@ var hud_help: Label
 var cat  # кот на стойке (scripts/cat.gd)
 var returns  # стол возвратов (scripts/returns.gd)
 var extras  # кофемашина, камера, лежанка (scripts/extras.gd)
+var story  # письма владельца (scripts/story.gd)
 var _pad_was := false
 var pause_panel: PanelContainer
 var shop_panel: PanelContainer
@@ -220,6 +221,9 @@ func _ready() -> void:
 	extras = load("res://scripts/extras.gd").new()
 	add_child(extras)
 	extras.setup(self)
+	story = load("res://scripts/story.gd").new()
+	add_child(story)
+	story.setup(self)
 
 	_play_music()
 	Sfx.set_ambient(true)
@@ -262,6 +266,8 @@ func _ready() -> void:
 		_ret_test()
 	if "--uptest" in OS.get_cmdline_args():
 		_up_test()
+	if "--storytest" in OS.get_cmdline_args():
+		_story_test()
 	for a in OS.get_cmdline_args():
 		if a.begins_with("--showcase="):
 			var sc = load("res://scripts/showcase.gd").new()
@@ -307,6 +313,10 @@ func _setup_input() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and story and story.is_open():
+		story.close()
+		get_tree().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_cancel") and mirror and mirror.is_open():
 		mirror.close()
 		get_tree().set_input_as_handled()
@@ -2732,6 +2742,8 @@ func _enter_closed() -> void:
 		if tut_step >= 10:
 			_tut_arrow_at(sign_spr.translation + Vector3(0, 0.6, -0.15))
 	hud_event.text = tr("ПУНКТ ЗАКРЫТ")
+	if story:
+		story.call_deferred("on_closed")
 	if tut_step >= 10:
 		_flash(tr("ПУНКТ ЗАКРЫТ — смена %d, %s") % [Game.day, tr(Game.district()["name"])], 4.0)
 	else:
@@ -2876,6 +2888,9 @@ func _update_carry() -> void:
 
 
 func ui_click(_event) -> void:
+	if story and story.is_open():
+		story.close()
+		return
 	if board_open:
 		board_open = false
 		ui_block = carrying != null
@@ -4673,4 +4688,29 @@ func _up_test() -> void:
 	_open_laptop(null)
 	yield(get_tree().create_timer(1.0), "timeout")
 	_save(dir + "/up_shop.png")
+	get_tree().quit()
+
+
+func _read_letter(_b) -> void:
+	story.open()
+
+
+func _story_test() -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	yield(get_tree().create_timer(2.0), "timeout")
+	for d in [2, 19]:
+		Game.day = d
+		Game.seen_kinds.erase("letter_%d" % d)
+		story.on_closed()
+		yield(get_tree().create_timer(0.3), "timeout")
+		if d == 2:
+			player.global_transform.origin = Vector3(0.9, 0.05, -1.0)
+			player.rotation.y = PI
+			player.cam.rotation.x = -0.5
+			yield(get_tree().create_timer(0.5), "timeout")
+			_save(dir + "/story_env.png")
+		story.open()
+		yield(get_tree().create_timer(0.5), "timeout")
+		_save(dir + "/story_%d.png" % d)
+		story.close()
 	get_tree().quit()
