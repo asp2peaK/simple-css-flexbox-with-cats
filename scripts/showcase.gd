@@ -15,6 +15,7 @@ var _cam_to := []
 var _move := []  # [узел, откуда, куда]
 var _track = null  # камера следит за этим узлом
 var hud := false
+var eye := -1.0  # своя высота камеры (для низких ракурсов)
 
 
 func run(main, scene: String) -> void:
@@ -31,6 +32,7 @@ func run(main, scene: String) -> void:
 			hud = true
 	Game.tutorial_done = true
 	m.tut_step = -1
+	Ach._busy = true  # без всплывашек «Достижение получено» в кадре
 	VisualServer.connect("frame_post_draw", self, "_post_draw")
 	call(scene)
 
@@ -42,6 +44,8 @@ func _process(delta: float) -> void:
 		m.hud_tut.visible = false
 	if not hud:
 		_hide_hud()
+	if eye > 0.0:
+		m.player.cam.translation.y = eye
 	if _rec:
 		_t += delta
 		var k: float = clamp(_t / length, 0.0, 1.0)
@@ -81,14 +85,14 @@ func _hide_hud() -> void:
 	for ch in m.get_children():
 		if ch is CanvasLayer and ch.get_child_count() > 0:
 			for w in ch.get_child(0).get_children():
-				if w is Label and not w in m.hud_bubbles:
+				if w is Label and not w in m.hud_bubbles and not w.has_meta("keep"):
 					w.visible = false
 			return
 
 
 # повернуть камеру игрока на точку (глаза на высоте 1.6 м)
 func _aim(t: Vector3) -> void:
-	var p: Vector3 = m.player.global_transform.origin + Vector3(0, 1.6, 0)
+	var p: Vector3 = m.player.global_transform.origin + Vector3(0, eye if eye > 0.0 else 1.6, 0)
 	var d := t - p
 	m.player.rotation = Vector3(0, atan2(-d.x, -d.z), 0)
 	m.player.cam.rotation.x = atan2(d.y, Vector2(d.x, d.z).length())
@@ -100,7 +104,7 @@ func _yaw_to(from: Vector3, t: Vector3) -> float:
 
 
 func _pitch_to(from: Vector3, t: Vector3) -> float:
-	var d := t - (from + Vector3(0, 1.6, 0))
+	var d := t - (from + Vector3(0, eye if eye > 0.0 else 1.6, 0))
 	return atan2(d.y, Vector2(d.x, d.z).length())
 
 
@@ -274,3 +278,81 @@ func mirror() -> void:
 		m.mirror.edit[sq[0]] = sq[1]
 		m.mirror.edit[sq[2]] = sq[3]
 		m.mirror._refresh()
+
+
+# ---- v0.14
+func cat() -> void:
+	# кота гладят: сердечки, мурчит
+	yield(_wait(1.5), "timeout")
+	if m.cat == null:
+		get_tree().quit()
+		return
+	var cp: Vector3 = m.cat.spr.global_transform.origin
+	_dolly(cp + Vector3(0.3, -1.35, -0.75), cp, cp + Vector3(0.1, -1.4, -0.55), cp)
+	m.cat.pet()
+	yield(_wait(0.4), "timeout")
+	m.cat.pet()
+	_start()
+	for k in 3:
+		yield(_wait(length * 0.15), "timeout")
+		m.cat.pets = 1
+		m.cat.pet()
+
+
+func returns() -> void:
+	# возврат: клиент принёс мятую коробку, лоток возвратов
+	m._spawn_customer()
+	yield(_wait(0.1), "timeout")
+	var c = null
+	for q in m.customers:
+		if is_instance_valid(q):
+			c = q
+	if c:
+		c.set_meta("ret", true)
+		c.order = "%s-%02d" % [tr("В"), 47]
+		c.scammer = false
+		c.fake = ""
+		c.safe_pin = ""
+		c.set_meta("ret_dmg", "boot")
+	for _i in 30:
+		yield(_wait(0.5), "timeout")
+		if not _at_counter().empty():
+			break
+	yield(_wait(1.0), "timeout")
+	var x: float = c.global_transform.origin.x if c else 0.0
+	_dolly(Vector3(x + 0.8, 0.05, -1.8), Vector3(x, 1.35, 0.3), Vector3(x + 0.5, 0.05, -1.5), Vector3(x, 1.4, 0.4))
+	_start()
+	if still != "":
+		return
+	yield(_wait(length * 0.55), "timeout")
+	if c and is_instance_valid(c):
+		m.returns.on_kick(c)
+
+
+func letter() -> void:
+	# письмо от владельца сети, дракона
+	yield(_wait(1.5), "timeout")
+	_cam(Vector3(0.9, 0.05, -1.4), 0.0, -0.35, Vector3(0.9, 0.05, -1.4), 0.0, -0.35)
+	m.story._day = 6
+	m.story._show(6)
+	_start()
+
+
+func rats() -> void:
+	# редкое событие: крысы тащат коробки в нору (коробки заранее на полу у норы)
+	yield(_wait(1.0), "timeout")
+	var spots := [Vector3(5.6, 0.3, -2.4), Vector3(5.0, 0.3, -3.0), Vector3(6.1, 0.3, -3.3)]
+	var k := 0
+	for p in m.parcels:
+		if k < 3 and is_instance_valid(p) and p.box_type == "normal" and not p.duo:
+			p.global_transform.origin = spots[k]
+			p.linear_velocity = Vector3.ZERO
+			k += 1
+	m.player.global_transform.origin = Vector3(3.6, 0.0, -1.9)
+	m.rare.event = "rats"
+	m.rare.fire_at = -1.0
+	m.rare._start()
+	yield(_wait(3.0), "timeout")
+	eye = 0.5
+	_dolly(Vector3(3.6, 0.0, -1.9), Vector3(5.8, 0.15, -2.2), Vector3(3.9, 0.0, -1.7), Vector3(6.0, 0.15, -2.0))
+	_start()

@@ -211,6 +211,7 @@ func _stamp(ok: bool) -> void:
 	tr_.rect_rotation = -8
 	var l := Label.new()
 	l.text = tr("ПРИНЯТО") if ok else tr("ОТКАЗ")
+	l.set_meta("keep", true)
 	l.add_font_override("font", main.font_big)
 	l.add_color_override("font_color", Color(0.2, 0.75, 0.25) if ok else Color(0.9, 0.15, 0.15))
 	l.align = Label.ALIGN_CENTER
