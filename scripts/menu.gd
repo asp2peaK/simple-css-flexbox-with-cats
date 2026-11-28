@@ -673,6 +673,17 @@ func _studio_splash() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# Esc закрывает открытое окно меню
+	if event.is_action_pressed("ui_cancel"):
+		for p in [mods_panel, news_panel, ach_panel, demo_panel]:
+			if p and is_instance_valid(p):
+				p.queue_free()
+				get_tree().set_input_as_handled()
+				return
+		if coop_panel and coop_panel.visible:
+			_coop_back()
+			get_tree().set_input_as_handled()
+			return
 	if _splash and is_instance_valid(_splash) and (event is InputEventMouseButton or event is InputEventKey) and event.pressed:
 		_splash.queue_free()
 		_splash = null

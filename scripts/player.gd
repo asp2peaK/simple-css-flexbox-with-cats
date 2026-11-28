@@ -77,6 +77,14 @@ func _ready() -> void:
 	add_child(ghost)
 
 
+# поворот мышью ловим раньше интерфейса: любая картинка в центре экрана (медаль, значок)
+# иначе съедает движение мыши, и камера «залипает»
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+		_unhandled_input(event)
+		get_tree().set_input_as_handled()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if get_parent().get("shift_over"):
 		return

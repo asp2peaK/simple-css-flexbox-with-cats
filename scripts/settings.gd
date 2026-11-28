@@ -179,8 +179,16 @@ func apply() -> void:
 	if OS.has_feature("standalone") or not OS.has_feature("editor"):
 		OS.window_fullscreen = fullscreen
 		if not fullscreen:
-			OS.window_size = RESOLUTIONS[res_idx]
-			OS.center_window()
+			# окно размером с экран уходит под панель задач и заголовок: низ картинки пропадал.
+			# Если выбранный размер не влезает в рабочую область — просто разворачиваем окно
+			var want: Vector2 = RESOLUTIONS[res_idx]
+			var scr: Vector2 = OS.get_screen_size()
+			if want.x > scr.x - 20 or want.y > scr.y - 90:
+				OS.window_maximized = true
+			else:
+				OS.window_maximized = false
+				OS.window_size = want
+				OS.center_window()
 
 
 func save_cfg() -> void:

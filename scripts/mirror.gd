@@ -66,6 +66,7 @@ func build(m) -> void:
 	doll = Doll.new()
 	doll.set_layers(2)
 	doll.view_cam = cam
+	doll.front_cos = 0.8  # в зеркале поворот заметнее: уже с ~37° видно бок
 	main.add_child(doll)
 	doll.set_look(Settings.look)
 	if main.player and main.player.cam:
@@ -75,14 +76,24 @@ func build(m) -> void:
 	process_priority = 1000
 
 
+var _last_pos := Vector3.ZERO
+var _spd := 0.0
+
+
 func _process(_d: float) -> void:
 	if main == null or main.player == null:
 		return
 	var p = main.player
 	doll.global_transform.origin = p.global_transform.origin
 	doll.rotation.y = p.rotation.y
-	doll.walking = Vector2(p.velocity.x, p.velocity.z).length() > 0.5 if "velocity" in p else false
+	# идёт ли игрок — по сдвигу за кадр (так работает и в трейлере, где камеру двигает скрипт)
+	var pos: Vector3 = p.global_transform.origin
+	var spd: float = Vector2(pos.x - _last_pos.x, pos.z - _last_pos.z).length() / max(_d, 0.001)
+	_last_pos = pos
+	_spd = lerp(_spd, spd, 0.3)
+	doll.walking = _spd > 0.4
 	doll.carrying = p.held != null
+	doll.set_state(p.down_dir if p.stun_t > 0.0 else "", p.curse == "bighead")
 	var E: Vector3 = p.cam.global_transform.origin
 	var C: Vector3 = global_transform.origin + Vector3(0, GLASS_Y, 0)
 	var n: Vector3 = global_transform.basis.z.normalized()

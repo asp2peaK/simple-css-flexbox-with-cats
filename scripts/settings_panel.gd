@@ -97,6 +97,19 @@ func build(f: Font) -> void:
 	tw.connect("text_entered", self, "_on_twitch")
 	tw.connect("focus_exited", self, "_on_twitch_focus", [tw])
 	row4.add_child(tw)
+	# статус подключения и как это работает
+	var ts := Label.new()
+	var small: DynamicFont = font.duplicate()
+	small.size = 12
+	small.use_filter = true
+	ts.add_font_override("font", small)
+	ts.autowrap = true
+	ts.rect_min_size = Vector2(290, 0)
+	ts.modulate = Color(1, 1, 1, 0.85)
+	right.add_child(ts)
+	_tw_status = ts
+	_on_tw_status(Twitch.status)
+	Twitch.connect("status_changed", self, "_on_tw_status")
 	var kb := Button.new()
 	kb.text = tr("Управление (клавиши)")
 	kb.add_font_override("font", font)
@@ -126,6 +139,21 @@ func build(f: Font) -> void:
 func _on_streamer(on: bool) -> void:
 	Settings.streamer = on
 	Settings.save_cfg()
+
+
+var _tw_status: Label
+
+
+func _on_tw_status(st: String) -> void:
+	if _tw_status == null or not is_instance_valid(_tw_status):
+		return
+	var hint := tr("Во время смены чат голосует за события: зрители пишут 1, 2 или 3.")
+	_tw_status.text = (st + "\n" + hint) if st != "" else tr("Впиши ник своего канала и нажми Enter.") + " " + hint
+
+
+func _exit_tree() -> void:
+	if Twitch.is_connected("status_changed", self, "_on_tw_status"):
+		Twitch.disconnect("status_changed", self, "_on_tw_status")
 
 
 func _on_twitch(t: String) -> void:
@@ -273,6 +301,14 @@ func _wait_key(a: String) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if _wait_action == "" and event.is_action_pressed("ui_cancel"):
+		# Esc: сначала окно клавиш, потом сами настройки
+		if keys_panel and is_instance_valid(keys_panel):
+			_close_keys()
+		else:
+			_close()
+		get_tree().set_input_as_handled()
+		return
 	if _wait_action == "" or not event.pressed:
 		return
 	var code := 0

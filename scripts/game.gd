@@ -2,7 +2,7 @@ extends Node
 # Состояние игры между сменами (автозагрузка Game): день, касса, улучшения, сохранение.
 
 const SAVE_PATH := "user://save.json"
-const VERSION := "0.15.2"
+const VERSION := "0.15.3"
 # демоверсия: экспорт с фичей "demo" (пресеты "* Demo") или запуск с --demo
 const DEMO_DAYS := 3
 const STORE_APP_ID := 0  # App ID полной версии в Steam, когда появится

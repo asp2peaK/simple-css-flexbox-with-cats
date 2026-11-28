@@ -40,6 +40,9 @@ var vote_box: Label
 var hud_curse: Label
 var hud_curse_icon: TextureRect
 var hud_stars: Control
+var stun_vig: TextureRect
+var _stun_k := 0.0  # 0..1, плавно
+var _lowpass: AudioEffectLowPassFilter
 var _stars_t := 0.0
 
 
@@ -68,6 +71,15 @@ func setup(m) -> void:
 	hud_curse_icon.rect_position = Vector2(304, 266)
 	hud_curse_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(hud_curse_icon)
+	# оглушение: края экрана темнеют, звук глохнет
+	stun_vig = TextureRect.new()
+	stun_vig.texture = _vignette_tex()
+	stun_vig.expand = true
+	stun_vig.stretch_mode = TextureRect.STRETCH_SCALE
+	stun_vig.rect_size = Vector2(640, 360)
+	stun_vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stun_vig.modulate.a = 0.0
+	layer.add_child(stun_vig)
 	hud_stars = Control.new()
 	hud_stars.visible = false
 	hud_stars.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -620,12 +632,62 @@ func _process(delta: float) -> void:
 		hud_curse.text = ""
 		hud_curse_icon.texture = null
 	hud_stars.visible = pl.stun_t > 0.0
+	_update_stun_fx(delta, pl.stun_t > 0.0)
 	if hud_stars.visible:
 		_stars_t += delta
 		for k in hud_stars.get_child_count():
 			var a: float = _stars_t * 3.0 + k * TAU / 5.0
 			hud_stars.get_child(k).rect_position = Vector2(320 + cos(a) * 70 - 11, 70 + sin(a) * 22 - 11)
 	_update_vote(delta)
+
+
+static func _vignette_tex() -> ImageTexture:
+	var w := 160
+	var h := 90
+	var img := Image.new()
+	img.create(w, h, false, Image.FORMAT_RGBA8)
+	img.lock()
+	for y in h:
+		for x in w:
+			var dx: float = (x + 0.5) / w * 2.0 - 1.0
+			var dy: float = (y + 0.5) / h * 2.0 - 1.0
+			var r: float = sqrt(dx * dx * 0.9 + dy * dy * 1.1)
+			var a: float = clamp((r - 0.45) / 0.6, 0.0, 1.0)
+			img.set_pixel(x, y, Color(0.02, 0.0, 0.03, a * a * (3.0 - 2.0 * a)))
+	img.unlock()
+	var t := ImageTexture.new()
+	t.create_from_image(img, Texture.FLAG_FILTER)
+	return t
+
+
+func _update_stun_fx(delta: float, on: bool) -> void:
+	var target := 1.0 if on else 0.0
+	var was := _stun_k
+	_stun_k = move_toward(_stun_k, target, delta * (4.0 if on else 1.5))
+	if stun_vig:
+		stun_vig.modulate.a = _stun_k * (0.85 + sin(OS.get_ticks_msec() * 0.006) * 0.1 * _stun_k)
+	if was == _stun_k:
+		return
+	var bus := 0  # Master: глохнет и музыка, и звуки
+	if _lowpass == null:
+		_lowpass = AudioEffectLowPassFilter.new()
+		AudioServer.add_bus_effect(bus, _lowpass)
+	_lowpass.cutoff_hz = lerp(20000.0, 450.0, _stun_k)
+	for i in AudioServer.get_bus_effect_count(bus):
+		if AudioServer.get_bus_effect(bus, i) == _lowpass:
+			AudioServer.set_bus_effect_enabled(bus, i, _stun_k > 0.01)
+	AudioServer.set_bus_volume_db(bus, -6.0 * _stun_k)
+
+
+func _exit_tree() -> void:
+	# фильтр живёт на шине: убираем, чтобы в меню и следующей сцене звук был обычный
+	if _lowpass:
+		var bus := 0
+		AudioServer.set_bus_volume_db(bus, 0.0)
+		for i in range(AudioServer.get_bus_effect_count(bus) - 1, -1, -1):
+			if AudioServer.get_bus_effect(bus, i) == _lowpass:
+				AudioServer.remove_bus_effect(bus, i)
+		_lowpass = null
 
 
 func _physics_process(delta: float) -> void:

@@ -179,6 +179,7 @@ func _ready() -> void:
 	# HUD (реплики над головами) считаем последним, когда камера уже сдвинута в этом кадре,
 	# иначе подписи отстают на кадр и дрожат
 	process_priority = 100
+	add_child(EscCatcher.new(self))
 	if Net.active:
 		seed(Net.seed_value)  # у всех одинаковый склад
 	else:
@@ -321,6 +322,8 @@ func _ready() -> void:
 		_relangtest()
 	if "--shelftest" in OS.get_cmdline_args():
 		_shelftest()
+	if "--decortest" in OS.get_cmdline_args():
+		_decortest()
 	if "--mirrortest" in OS.get_cmdline_args():
 		_mirrortest()
 	if "--shotfix" in OS.get_cmdline_args():
@@ -340,22 +343,44 @@ func _setup_input() -> void:
 	Settings.apply_keys()
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel") and story and story.is_open():
+# Esc закрывает любое открытое окно. Ловим раньше интерфейса и даже на паузе
+# (ноутбук ставит игру на паузу, и обычный ввод сцены тогда не приходит)
+class EscCatcher extends Node:
+	var main
+	func _init(m) -> void:
+		main = m
+		pause_mode = Node.PAUSE_MODE_PROCESS
+	func _input(event: InputEvent) -> void:
+		if event.is_action_pressed("ui_cancel") and main._esc():
+			get_tree().set_input_as_handled()
+
+
+func _esc() -> bool:
+	if story and story.is_open():
 		story.close()
-		get_tree().set_input_as_handled()
-		return
-	if event.is_action_pressed("ui_cancel") and mirror and mirror.is_open():
+		return true
+	if mirror and mirror.is_open():
 		mirror.close()
-		get_tree().set_input_as_handled()
-		return
-	if event.is_action_pressed("ui_cancel") and board_open:
-		ui_click(event)
-		return
-	if event.is_action_pressed("ui_cancel") and shop_panel.visible and not shift_over:
+		return true
+	if board_open:
+		ui_click(null)
+		return true
+	if shop_panel.visible and not shift_over:
 		_close_laptop()
-		get_tree().set_input_as_handled()
-		return
+		return true
+	if carrying:
+		_drop_carry(true)  # вернуть декор/стеллаж на место
+		return true
+	if pause_panel.visible and get_tree().paused:
+		for ch in pause_panel.get_parent().get_children():
+			if ch.has_method("_close") and ch.get_script() == preload("res://scripts/settings_panel.gd"):
+				return false  # открыты настройки: их закроет сама панель
+		_set_paused(false)
+		return true
+	return false
+
+
+func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and not shift_over:
 		_set_paused(not get_tree().paused)
 		return
@@ -2398,7 +2423,7 @@ func _refresh_shop() -> void:
 		_refresh_decor_shop()
 		return
 	var grid := GridContainer.new()
-	grid.columns = 2
+	grid.columns = 1  # в одну колонку: названия и цены влезают целиком
 	# улучшений много: список прокручивается (колесо, стик, перетаскивание)
 	var sc := ScrollContainer.new()
 	sc.rect_min_size = Vector2(530, 214)
@@ -2421,7 +2446,7 @@ func _refresh_shop() -> void:
 			txt = tr("%s  ур.%d/%d  %d мон.\n%s") % [tr(u[0]), lv, u[2], pr, tr(u[1])]
 		var b := _button(grid, txt, "_buy", [id])
 		b.add_font_override("font", fsm)
-		b.rect_min_size = Vector2(258, 34)
+		b.rect_min_size = Vector2(516, 34)
 		b.clip_text = true
 		var ip: String = "res://assets/ui/up_%s.png" % id
 		if ResourceLoader.exists(ip):
@@ -2446,11 +2471,17 @@ func _shop_tab(t: String) -> void:
 
 func _refresh_decor_shop() -> void:
 	var grid := GridContainer.new()
-	grid.columns = 2
-	shop_box.add_child(grid)
+	grid.columns = 1  # в одну колонку: названия и цены влезают целиком
+	var sc := ScrollContainer.new()
+	sc.rect_min_size = Vector2(530, 214)
+	sc.scroll_horizontal_enabled = false
+	shop_box.add_child(sc)
+	sc.add_child(grid)
 	var fsm: DynamicFont = font_big.duplicate()
 	fsm.size = 10
 	for id in Career.DECOR_ORDER:
+		if not Career.decor_available(id):
+			continue
 		var d: Array = Career.DECOR[id]
 		var cost: String = (tr("%d мон.") % d[2]) if d[2] > 0 else (tr("%d жет.") % d[3])
 		var txt: String
@@ -2466,7 +2497,7 @@ func _refresh_decor_shop() -> void:
 			can = Game.bank >= d[2] and Game.tokens >= d[3]
 		var b := _button(grid, txt, "_buy_decor", [id])
 		b.add_font_override("font", fsm)
-		b.rect_min_size = Vector2(258, 34)
+		b.rect_min_size = Vector2(516, 34)
 		b.clip_text = true
 		b.align = Button.ALIGN_LEFT
 		var ip: String = "res://assets/decor/icon_%s.png" % id
@@ -2616,6 +2647,9 @@ func _build_hud() -> void:
 	hud_panel_text.align = Label.ALIGN_CENTER
 	hud_panel_text.valign = Label.VALIGN_CENTER
 	hud_panel_text.rect_min_size = Vector2(230, 0)
+	# длинные строки (подсказки обучения) переносим, иначе окно растягивается за край экрана
+	hud_panel_text.autowrap = true
+	hud_panel_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ph.add_child(hud_panel_text)
 	var fs: DynamicFont = font_big.duplicate()
 	fs.size = 12
@@ -3031,7 +3065,7 @@ func _ring_desk(b) -> void:
 		_spawn_customer()
 
 
-const SURFACE_DECOR := ["vinyl", "trophy", "mouse_queen"]  # ставятся только на стол/стойку, остальное — на пол
+const SURFACE_DECOR := ["vinyl", "trophy", "mouse_queen", "fishbowl", "piggy", "snowglobe", "candle"]  # ставятся только на стол/стойку, остальное — на пол
 
 
 func _pick_decor(b) -> void:
@@ -3303,6 +3337,8 @@ func _open_delivery(b) -> void:
 	var p: Vector3 = bx.global_transform.origin
 	p.y = 0
 	var key := {"plant": "plant2", "vinyl": "vinyl", "trophy": "trophy"}
+	for nid in NEW_DECOR_FLOOR:
+		key[nid] = nid
 	if key.has(id):
 		Game.decor_pos[key[id]] = [p.x + 0.6, 0.0, p.z]
 		Game.save_game()
@@ -3627,7 +3663,137 @@ func _move_handle(root: Spatial, ext: Vector3, y: float) -> void:
 	b.translation = Vector3(0, y, 0)
 
 
+const NEW_DECOR_FLOOR := ["lamp", "armchair", "barrel", "bookcase", "cactus", "gumball"]
+const NEW_DECOR_SURFACE := ["fishbowl", "piggy", "snowglobe", "candle"]
+
+
+func _cyl(root: Spatial, r_top: float, r_bot: float, h: float, pos: Vector3, m: Material, seg := 10) -> MeshInstance:
+	var mi := MeshInstance.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = r_top
+	cm.bottom_radius = r_bot
+	cm.height = h
+	cm.radial_segments = seg
+	cm.rings = 1
+	mi.mesh = cm
+	mi.material_override = m
+	mi.translation = pos
+	root.add_child(mi)
+	return mi
+
+
+func _box(root: Spatial, size: Vector3, pos: Vector3, m: Material) -> MeshInstance:
+	var mi := MeshInstance.new()
+	var cm := CubeMesh.new()
+	cm.size = size
+	mi.mesh = cm
+	mi.material_override = m
+	mi.translation = pos
+	root.add_child(mi)
+	return mi
+
+
+# новый декор: стоит там, куда поставили (по умолчанию у портала доставки)
+func _new_decor(id: String) -> void:
+	var surface: bool = id in NEW_DECOR_SURFACE
+	var idx: int = (NEW_DECOR_SURFACE if surface else NEW_DECOR_FLOOR).find(id)
+	# по умолчанию (пока не переставили): вдоль стен зала, не на пути клиентов
+	var floor_def := {"lamp": Vector3(-6.2, 0, 2.4), "armchair": Vector3(-5.2, 0, 4.0), "bookcase": Vector3(-3.6, 0, 4.35),
+		"barrel": Vector3(6.2, 0, 1.6), "cactus": Vector3(-4.4, 0, 2.9), "gumball": Vector3(6.2, 0, 2.9)}
+	var def: Vector3 = Vector3(-5.6 + idx * 0.45, 0.98, 0.0) if surface else floor_def.get(id, Vector3(-3.6 + idx * 0.9, 0, -2.6))
+	var r := _movable(id, def)
+	if id in ["bookcase", "armchair"]:
+		r.rotation.y = PI  # лицом к стойке
+	var wood: Material = mat("env_wood", 0.8, Color(0.5, 0.34, 0.24))
+	var dark: Material = mat("env_wood", 0.8, Color(0.3, 0.2, 0.14))
+	var h := 0.6
+	var w := 0.26
+	match id:
+		"lamp":
+			_cyl(r, 0.14, 0.16, 0.05, Vector3(0, 0.025, 0), dark)
+			_cyl(r, 0.025, 0.025, 1.4, Vector3(0, 0.72, 0), unshaded(Color(0.22, 0.18, 0.15)))
+			_cyl(r, 0.12, 0.24, 0.28, Vector3(0, 1.5, 0), unshaded(Color(1.0, 0.86, 0.55)))
+			var l := OmniLight.new()
+			l.light_color = Color(1.0, 0.8, 0.5)
+			l.light_energy = 0.9
+			l.omni_range = 3.2
+			l.translation = Vector3(0, 1.4, 0)
+			r.add_child(l)
+			h = 1.65
+			w = 0.22
+		"armchair":
+			var red := unshaded(Color(0.62, 0.16, 0.14))
+			var red2 := unshaded(Color(0.5, 0.12, 0.11))
+			_box(r, Vector3(0.8, 0.35, 0.7), Vector3(0, 0.25, 0), red)
+			_box(r, Vector3(0.8, 0.6, 0.16), Vector3(0, 0.7, -0.29), red2)
+			_box(r, Vector3(0.14, 0.32, 0.7), Vector3(-0.4, 0.55, 0), red2)
+			_box(r, Vector3(0.14, 0.32, 0.7), Vector3(0.4, 0.55, 0), red2)
+			for x in [-0.33, 0.33]:
+				for z in [-0.28, 0.28]:
+					_box(r, Vector3(0.06, 0.08, 0.06), Vector3(x, 0.04, z), dark)
+			h = 1.0
+			w = 0.42
+		"barrel":
+			_cyl(r, 0.3, 0.3, 0.75, Vector3(0, 0.375, 0), wood, 12)
+			for y in [0.12, 0.63]:
+				_cyl(r, 0.31, 0.31, 0.05, Vector3(0, y, 0), unshaded(Color(0.25, 0.25, 0.28)), 12)
+			var apple := unshaded(Color(0.8, 0.12, 0.1))
+			for k in 6:
+				var a := float(k) / 6.0 * TAU
+				var am := MeshInstance.new()
+				var sm := SphereMesh.new()
+				sm.radius = 0.07
+				sm.height = 0.14
+				sm.radial_segments = 6
+				sm.rings = 3
+				am.mesh = sm
+				am.material_override = apple if k % 3 else unshaded(Color(0.5, 0.75, 0.2))
+				am.translation = Vector3(cos(a) * 0.15, 0.79, sin(a) * 0.15)
+				r.add_child(am)
+			h = 0.85
+			w = 0.3
+		"bookcase":
+			_box(r, Vector3(0.9, 1.7, 0.35), Vector3(0, 0.85, 0), dark)
+			var cols := [Color(0.7, 0.2, 0.2), Color(0.2, 0.4, 0.7), Color(0.85, 0.7, 0.25), Color(0.25, 0.55, 0.3),
+				Color(0.5, 0.25, 0.55), Color(0.8, 0.45, 0.2)]
+			var k := 0
+			for row in 4:
+				var y: float = 0.22 + row * 0.4
+				_box(r, Vector3(0.84, 0.03, 0.3), Vector3(0, y - 0.13, 0.04), wood)
+				var x := -0.38
+				while x < 0.36:
+					var bw: float = 0.05 + (k % 3) * 0.015
+					var bh: float = 0.22 + (k % 4) * 0.025
+					_box(r, Vector3(bw, bh, 0.24), Vector3(x + bw / 2.0, y - 0.115 + bh / 2.0, 0.06), unshaded(cols[k % cols.size()]))
+					x += bw + 0.008
+					k += 1
+			h = 1.7
+			w = 0.45
+		_:
+			var art: Array = Career.DECOR_ART.get(id, [])
+			if art.empty() or not ResourceLoader.exists("res://assets/props/%s.png" % art[0]):
+				return
+			var s := prop(art[0], Vector3.ZERO, 0, art[1], true)
+			_adopt(r, s)
+			h = art[1]
+			w = 0.22 if not surface else 0.12
+	if not surface:
+		# твёрдое: игрок и коробки не проходят насквозь
+		var sb := StaticBody.new()
+		var cs := CollisionShape.new()
+		var bs := BoxShape.new()
+		bs.extents = Vector3(w, h / 2.0, w)
+		cs.shape = bs
+		sb.add_child(cs)
+		sb.translation = Vector3(0, h / 2.0, 0)
+		r.add_child(sb)
+	_move_handle(r, Vector3(w + 0.02, h / 2.0, w + 0.02), h / 2.0)
+
+
 func _decor_item(id: String) -> void:
+	if id in NEW_DECOR_FLOOR or id in NEW_DECOR_SURFACE:
+		_new_decor(id)
+		return
 	match id:
 		"plant":
 			var big := "plant_big" if ResourceLoader.exists("res://assets/props/plant_big.png") else "plant"
@@ -4686,6 +4852,32 @@ func _shelftest() -> void:
 	get_tree().quit()
 
 
+func _decortest() -> void:
+	# новый декор у портала: снимок + перенос кресла
+	var dir := OS.get_environment("SHOT_DIR")
+	yield(get_tree().create_timer(1.5), "timeout")
+	_look_at_point(Vector3(-0.5, 0.05, 0.4), Vector3(-1.5, 0.6, -2.6))
+	yield(get_tree().create_timer(0.5), "timeout")
+	_save(dir + "/decor_new.png")
+	_look_at_point(Vector3(-5.0, 0.05, 1.6), Vector3(-5.0, 1.0, 0.0))
+	yield(get_tree().create_timer(0.5), "timeout")
+	_save(dir + "/decor_counter.png")
+	# Esc закрывает ноутбук (игра на паузе)
+	_open_laptop(null)
+	yield(get_tree().create_timer(0.3), "timeout")
+	var ev := InputEventAction.new()
+	ev.action = "ui_cancel"
+	ev.pressed = true
+	Input.parse_input_event(ev)
+	yield(get_tree().create_timer(0.3), "timeout")
+	print("esc laptop closed=", not shop_panel.visible, " paused=", get_tree().paused)
+	_set_paused(true)
+	Input.parse_input_event(ev)
+	yield(get_tree().create_timer(0.3), "timeout")
+	print("esc pause closed=", not pause_panel.visible, " paused=", get_tree().paused)
+	get_tree().quit()
+
+
 func _mirrortest() -> void:
 	var dir := OS.get_environment("SHOT_DIR")
 	yield(get_tree().create_timer(1.5), "timeout")
@@ -4809,7 +5001,10 @@ func _maga_reward() -> void:
 		md.texture = load("res://assets/ui/medal_maga.png")
 		md.rect_position = Vector2(296, 150)
 		md.rect_scale = Vector2(1.2, 1.2)
-		hud_center.get_parent().add_child(md)
+		md.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var hp: Node = hud_center.get_parent()
+		hp.add_child(md)
+		hp.move_child(md, 0)  # под меню паузы и окнами, а не поверх
 		var tw := create_tween()
 		tw.tween_interval(4.0)
 		tw.tween_property(md, "modulate:a", 0.0, 1.0)

@@ -3,6 +3,10 @@ extends Reference
 # Новая версия — добавь запись в начало списка (не больше 5 штук показываем).
 
 const NEWS := [
+	["0.15.3", "Новый декор и удобство",
+		"- 10 новых предметов декора: торшер, кресло, бочка с яблоками, книжный шкаф и другие. Всё можно переставлять.\n- Esc закрывает любое окно: ноутбук, зеркало, доску, настройки.\n- Оглушение: края экрана темнеют, звук глохнет.\n- В зеркале видно большую голову, ходьбу и поворот.\n- Цены в магазине больше не обрезаются, окна не уезжают за край экрана.\n- Мышь больше не залипает после секрета.",
+		"New decor and comfort",
+		"- 10 new decor items: floor lamp, armchair, apple barrel, bookcase and more. Move them anywhere.\n- Esc closes any window: laptop, mirror, board, settings.\n- Getting knocked out darkens the screen edges and muffles sound.\n- The mirror shows big heads, walking and turning.\n- Shop prices no longer get cut off, windows stay on screen.\n- The mouse no longer gets stuck after the secret."],
 	["0.15.2", "Моды с кодом",
 		"- Моды со скриптами: пиши свой код на GDScript (main.gd), подписывайся на события игры и меняй правила.\n- Свои картинки и звуки без Godot: папка replace в моде.\n- Примеры модов и инструкция в папке mods.\n- С модами-скриптами достижения и рекорды не засчитываются.\n- Зеркало снова отражает пол и стойку и больше не дёргается.\n- Лужи при потопе не появляются под мебелью.",
 		"Script mods",
