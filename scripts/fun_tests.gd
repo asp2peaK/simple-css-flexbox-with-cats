@@ -218,6 +218,7 @@ func cowhost() -> void:
 	_side_shot("c4_walk_side", cow.global_transform.origin)
 	yield(_at(15.5), "completed")
 	_shot("c5_counter")
+	print("COW at counter: ", cow.global_transform.origin)
 	_side_shot("c5_counter_side", cow.global_transform.origin)
 	yield(_at(16.0), "completed")
 	f.duo_release_local()

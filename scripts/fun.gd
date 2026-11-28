@@ -353,7 +353,7 @@ func duo_release(id: int, code: String) -> void:
 func _duo_drop(p) -> void:
 	# отпустили над стойкой — ставим на стойку (поднимаем на её высоту)
 	var o: Vector3 = p.global_transform.origin
-	if p.mode != RigidBody.MODE_RIGID and abs(o.z) < 0.6 and abs(o.x) < 6.5:
+	if p.mode != RigidBody.MODE_RIGID and o.z > -1.0 and o.z < 0.6 and abs(o.x) < 6.5:
 		p.global_transform.origin = Vector3(o.x, COUNTER_TOP + p.size.y / 2.0 + 0.03, clamp(o.z, -0.2, 0.2))
 	if p.mode != RigidBody.MODE_RIGID:
 		p.held = false
@@ -444,6 +444,11 @@ func _update_duo(delta: float) -> void:
 				continue
 			var mid := (a + b) / 2.0
 			mid.y = 0.55 + p.size.y / 2.0  # несут на руках низко, чтобы видеть дорогу
+			# у стойки: поднимаем над столешницей и не пускаем сквозь стенку к клиентам
+			var r: float = max(p.size.x, p.size.z) / 2.0
+			mid.z = min(mid.z, 0.38 - min(r, 0.35))
+			if mid.z > -0.4 - r and abs(mid.x) < 7.0:
+				mid.y = max(mid.y, COUNTER_TOP + p.size.y / 2.0 + 0.04)
 			var basis: Basis = p.global_transform.basis
 			if hs.size() >= 2 and Vector2(b.x - a.x, b.z - a.z).length() > 0.2:
 				basis = Basis(Vector3.UP, atan2(b.x - a.x, b.z - a.z) + PI / 2.0)

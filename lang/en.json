@@ -624,5 +624,7 @@
  "Держишь за край. Нужен второй, зови напарника!   [ПКМ/E] отпустить": "You're holding one end. Call your teammate for the other!   [RMB/E] let go",
  "  (МУУ! Только вдвоём)": "  (MOO! Two people only)",
  "  (огромный сундук: только вдвоём)": "  (huge chest: two people only)",
- "корова": "cow"
+ "корова": "cow",
+ "Пи?.. Мышка выходит только в одиночной карьере.": "Squeak?.. The mouse only comes out in solo career.",
+ "Пи?.. Мышка прячется, пока пункт открыт. Позвони так, когда закроешь.": "Squeak?.. The mouse hides while the point is open. Ring like that when it's closed."
 }

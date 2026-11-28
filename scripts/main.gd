@@ -2751,7 +2751,7 @@ func _read_board(_b) -> void:
 
 func _ring_desk(b) -> void:
 	Sfx.play_at("doorbell", b.global_transform.origin, 0.4, 2.0)
-	if not is_open and not Net.active and Game.mode == "career" and not maga_pending:
+	if not maga_pending:
 		# пасхалка: 5 звонков подряд, пока закрыто
 		var now := OS.get_ticks_msec()
 		bell_rings.append(now)
@@ -2759,7 +2759,15 @@ func _ring_desk(b) -> void:
 			bell_rings.pop_front()
 		if bell_rings.size() == 5 and now - int(bell_rings[0]) < 3500:
 			bell_rings.clear()
-			_maga_summon()
+			if not is_open and not Net.active and Game.mode == "career":
+				_maga_summon()
+			else:
+				# подсказка, почему не сработало
+				Sfx.play("squeak", 0.1, -6.0)
+				if Net.active or Game.mode != "career":
+					_flash(tr("Пи?.. Мышка выходит только в одиночной карьере."), 3.0)
+				else:
+					_flash(tr("Пи?.. Мышка прячется, пока пункт открыт. Позвони так, когда закроешь."), 3.0)
 	if not is_open or shift_over or net_client():
 		return
 	if customers.size() < Game.max_at_once() and spawned < total_customers:
@@ -4270,6 +4278,9 @@ func _test13() -> void:
 	for ch in get_children():
 		if ch is Sprite3D and ch.texture and ch.texture.resource_path.find("desk_bell") >= 0:
 			bell = ch
+	if is_open:
+		Game.phase = "closed"
+		_enter_closed()
 	for k in 5:
 		_ring_desk(bell)
 	print("maga pending=", maga_pending, " parcel=", maga_parcel != null)
