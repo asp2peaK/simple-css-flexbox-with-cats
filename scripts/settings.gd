@@ -17,6 +17,7 @@ const DEFAULT_KEYS := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": K
 var keys := DEFAULT_KEYS.duplicate()
 var sharp := true  # чёткая картинка (рендер в размер окна) или пиксельная 640x360
 var lang := "ru"
+var twitch := ""  # канал Twitch для голосования чата
 var reopen_settings := false
 # внешний вид игрока (зеркало) и купленные вещи — общие для всех режимов
 var look := {"nick": "", "race": "human", "skin": 0, "apron": 0, "hat": "", "face": ""}
@@ -100,6 +101,7 @@ func save_cfg() -> void:
 	c.set_value("video", "vsync", vsync)
 	c.set_value("video", "sharp", sharp)
 	c.set_value("game", "lang", lang)
+	c.set_value("game", "twitch", twitch)
 	c.set_value("input", "sens", sens)
 	c.set_value("input", "keys", keys)
 	c.set_value("player", "look", look)
@@ -118,6 +120,7 @@ func load_cfg() -> void:
 	vsync = c.get_value("video", "vsync", vsync)
 	sharp = c.get_value("video", "sharp", sharp)
 	lang = c.get_value("game", "lang", lang)
+	twitch = str(c.get_value("game", "twitch", twitch))
 	sens = c.get_value("input", "sens", sens)
 	var lk = c.get_value("player", "look", {})
 	if typeof(lk) == TYPE_DICTIONARY:

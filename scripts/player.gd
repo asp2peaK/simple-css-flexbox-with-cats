@@ -20,6 +20,17 @@ var _last_look := ""
 var charging := false
 var charge := 0.0
 var ghost: MeshInstance  # контур, куда встанет коробка
+var stun_t := 0.0  # оглушён: лежит, ничего не может
+var down_dir := ""
+var curse := ""  # invert / bighead / oink / glue
+var curse_t := 0.0
+var duo = null  # сундук/корова на двоих, за который держимся
+var duo_lifted := false
+var _cam_base := 1.6
+
+
+func fun():
+	return get_parent().get_node_or_null("Fun")
 
 
 func _ready() -> void:
@@ -69,9 +80,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if get_parent().get("shift_over"):
 		return
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * SENS * Settings.sens)
-		cam.rotate_x(-event.relative.y * SENS * Settings.sens)
+		var inv := -1.0 if curse == "invert" else 1.0
+		rotate_y(-event.relative.x * SENS * Settings.sens * inv)
+		cam.rotate_x(-event.relative.y * SENS * Settings.sens * inv)
 		cam.rotation.x = clamp(cam.rotation.x, -1.4, 1.4)
+	elif stun_t > 0.0:
+		return  # лежим, звёздочки
+	elif duo and ((event is InputEventMouseButton and event.pressed) or event.is_action_pressed("interact")):
+		if event is InputEventMouseButton and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			return
+		fun().duo_release_local()
 	elif get_parent().get("ui_block") and ((event is InputEventMouseButton and event.pressed) or event.is_action_pressed("interact")):
 		# несём декор или читаем доску: клик обрабатывает пункт
 		if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
@@ -138,7 +157,13 @@ func can_grab_more() -> bool:
 
 func try_grab() -> void:
 	var p = looked_parcel()
-	if p == null:
+	if p == null or duo:
+		return
+	if p.get("duo") == true:
+		if stack.empty():
+			fun().duo_grab(p)
+		else:
+			emit_signal("look_changed", tr("Сначала освободи руки!"))
 		return
 	if Net.active and not Net.is_host:
 		get_parent().rpc_id(1, "net_req_grab", p.code)  # хост решит и ответит
@@ -154,6 +179,8 @@ func grab_local(p) -> void:
 	held = p
 	p.held = true
 	Sfx.play("pickup", 0.15, -4.0)
+	if fun():
+		fun().on_grab_cursed(p)
 
 
 func grab(p) -> void:
@@ -173,9 +200,26 @@ func grab(p) -> void:
 	add_collision_exception_with(p)
 	p.add_collision_exception_with(self)
 	Sfx.play("pickup", 0.15, -4.0)
+	p.set_meta("holder", Net.my_id())
+	if fun():
+		fun().on_grab_cursed(p)
 
 
-func release(throw: bool) -> void:
+# сбили с ног: всё из рук разлетается
+func drop_all() -> void:
+	var guard := 0
+	while held and guard < 20:
+		guard += 1
+		release(false, true)
+
+
+func release(throw: bool, scatter := false) -> void:
+	if curse == "glue" and not scatter and held:
+		emit_signal("look_changed", tr("ПРИЛИПЛА! Не отпускается ещё %d с") % int(ceil(curse_t)))
+		Sfx.play("boing", 0.2, -6.0)
+		charging = false
+		charge = 0.0
+		return
 	var p = held
 	if p != null:
 		stack.erase(p)
@@ -184,7 +228,10 @@ func release(throw: bool) -> void:
 		return
 	p.held = false
 	if Net.active and not Net.is_host:
-		get_parent().rpc_id(1, "net_req_release", p.code, throw, charge, -cam.global_transform.basis.z, velocity)
+		var v: Vector3 = velocity
+		if scatter:
+			v = Vector3(rand_range(-2.5, 2.5), 0, rand_range(-2.5, 2.5))
+		get_parent().rpc_id(1, "net_req_release", p.code, throw, charge, -cam.global_transform.basis.z, v)
 		if throw:
 			Sfx.play("whoosh", 0.1, linear2db(lerp(0.4, 1.0, charge)))
 		charging = false
@@ -193,7 +240,9 @@ func release(throw: bool) -> void:
 	p.mode = RigidBody.MODE_RIGID
 	p.sleeping = false
 	p.linear_velocity = Vector3(velocity.x, 0, velocity.z)
-	if not throw:
+	if scatter:
+		p.linear_velocity = Vector3(rand_range(-2.5, 2.5), 2.0, rand_range(-2.5, 2.5))
+	elif not throw:
 		# Аккуратно ставим туда, куда смотришь (полка, стойка, пол, другая коробка)
 		var spot = place_spot(p)
 		if spot != null:
@@ -203,6 +252,7 @@ func release(throw: bool) -> void:
 	if throw:
 		var force: float = lerp(THROW_MIN, THROW_MAX, charge)
 		p.thrown = true
+		p.set_meta("thrower", Net.my_id())
 		Sfx.play("whoosh", 0.1, linear2db(lerp(0.4, 1.0, charge)))
 		p.apply_central_impulse(-cam.global_transform.basis.z * force * min(p.mass, 2.0))
 	charging = false
@@ -265,6 +315,25 @@ func _physics_process(delta: float) -> void:
 		Input.get_action_strength("move_back") - Input.get_action_strength("move_forward"))
 	if inp.length() > 1.0:
 		inp = inp.normalized()
+	if curse == "invert":
+		inp = -inp
+	if curse != "":
+		curse_t -= delta
+		if curse_t <= 0.0:
+			curse = ""
+			if fun():
+				fun().curse_ended()
+	cam.fov = lerp(cam.fov, 100.0 if curse == "bighead" else 75.0, min(1.0, 4.0 * delta))
+	if stun_t > 0.0:
+		inp = Vector2.ZERO
+		stun_t -= delta
+		_cam_base = lerp(_cam_base, 0.35, min(1.0, 8.0 * delta))
+		cam.rotation.z = lerp(cam.rotation.z, 0.6 if down_dir == "back" else -0.6, min(1.0, 8.0 * delta))
+		if stun_t <= 0.0:
+			stun_t = 0.0
+			cam.rotation.z = 0.0
+			if fun():
+				fun().send_fx()
 	var dir := transform.basis.xform(Vector3(inp.x, 0, inp.y))
 	dir.y = 0
 	dir = dir.normalized() * inp.length()
@@ -276,6 +345,8 @@ func _physics_process(delta: float) -> void:
 		if is_instance_valid(b) and b.box_type == "chest":
 			spd *= 0.4  # сундук: еле-еле
 			break
+	if duo:
+		spd *= 0.5 if duo_lifted else 0.8
 	velocity.x = dir.x * spd
 	velocity.z = dir.z * spd
 	velocity = move_and_slide(velocity, Vector3.UP, true)
@@ -290,8 +361,13 @@ func _physics_process(delta: float) -> void:
 	if inp.length() > 0.1 and is_on_floor():
 		_bob += delta * 9.0
 		if int(_bob / PI) != int((_bob - delta * 9.0) / PI):
-			Sfx.play("step%d" % (randi() % 2 + 1), 0.15, -8.0)
-	cam.translation.y = 1.6 + sin(_bob) * 0.03
+			if curse == "oink":
+				Sfx.play("oink", 0.15, -6.0)
+			else:
+				Sfx.play("step%d" % (randi() % 2 + 1), 0.15, -8.0)
+	if stun_t <= 0.0:
+		_cam_base = lerp(_cam_base, 1.6, min(1.0, 10.0 * delta))
+	cam.translation.y = _cam_base + (sin(_bob) * 0.03 if stun_t <= 0.0 else 0.0)
 
 	if charging and held:
 		charge = min(1.0, charge + delta / CHARGE_TIME)
@@ -314,7 +390,11 @@ func _physics_process(delta: float) -> void:
 			(ghost.mesh as CubeMesh).size = held.size
 			ghost.global_transform = Transform(Basis(Vector3.UP, rotation.y), sp)
 	var txt := ""
-	if held:
+	if stun_t > 0.0:
+		txt = tr("ОГЛУШЁН! Встанешь через %d с") % int(ceil(stun_t))
+	elif duo:
+		txt = tr("Несёте вдвоём! Идите к стойке.   [ПКМ/E] отпустить") if duo_lifted else tr("Держишь за край. Нужен второй, зови напарника!   [ПКМ/E] отпустить")
+	elif held:
 		var codes := []
 		for b in stack:
 			codes.append(b.code)
@@ -344,6 +424,10 @@ func _physics_process(delta: float) -> void:
 					extra = tr("  (РАСТАЯЛА)") if p.melted else tr("  (холодная: %d%%)") % int(p.melt * 100.0)
 				"living":
 					extra = tr("  (у неё ножки!)")
+				"cow":
+					extra = tr("  (МУУ! Только вдвоём)")
+			if p.get("duo") == true and p.box_type == "chest":
+				extra = tr("  (огромный сундук: только вдвоём)")
 			txt = tr("[ЛКМ/E] взять %s%s") % [Game.disp(p.code), extra]
 	if txt != _last_look:
 		_last_look = txt

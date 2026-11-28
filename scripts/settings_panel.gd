@@ -71,6 +71,20 @@ func build(f: Font) -> void:
 	lg.selected = 1 if Settings.lang == "en" else 0
 	lg.connect("item_selected", self, "_on_lang")
 	row3.add_child(lg)
+	var row4 := HBoxContainer.new()
+	v.add_child(row4)
+	var l4 := Label.new()
+	l4.text = tr("Twitch-канал  ")
+	l4.add_font_override("font", font)
+	row4.add_child(l4)
+	var tw := LineEdit.new()
+	tw.text = Settings.twitch
+	tw.placeholder_text = tr("ник канала")
+	tw.rect_min_size = Vector2(170, 0)
+	tw.add_font_override("font", font)
+	tw.connect("text_entered", self, "_on_twitch")
+	tw.connect("focus_exited", self, "_on_twitch_focus", [tw])
+	row4.add_child(tw)
 	var kb := Button.new()
 	kb.text = tr("Управление (клавиши)")
 	kb.add_font_override("font", font)
@@ -81,6 +95,19 @@ func build(f: Font) -> void:
 	close.add_font_override("font", font)
 	close.connect("pressed", self, "_close")
 	v.add_child(close)
+
+
+func _on_twitch(t: String) -> void:
+	t = t.strip_edges()
+	if t == Settings.twitch:
+		return
+	Settings.twitch = t
+	Settings.save_cfg()
+	Twitch.start(t)
+
+
+func _on_twitch_focus(e: LineEdit) -> void:
+	_on_twitch(e.text)
 
 
 func _title(v: Control, t: String) -> void:

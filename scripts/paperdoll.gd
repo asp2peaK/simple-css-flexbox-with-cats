@@ -79,6 +79,9 @@ var face: Sprite3D
 var view_cam: Camera  # для зеркала: вид считаем от этой камеры
 var walking := false
 var carrying := false
+var down := ""  # оглушён: "back" — лежит на спине, "front" — лицом в пол
+var big_head := false  # проклятие «большая голова»
+var headspr: Sprite3D
 var _t := 0.0
 var _view := ""
 var _pose := ""
@@ -92,6 +95,9 @@ func _init() -> void:
 	apron = _layer(1)
 	hat = _layer(3)
 	face = _layer(2)
+	headspr = _layer(0)
+	headspr.region_enabled = true
+	headspr.visible = false
 
 
 func _layer(prio: int) -> Sprite3D:
@@ -107,7 +113,7 @@ func _layer(prio: int) -> Sprite3D:
 
 
 func set_layers(mask: int) -> void:
-	for s in [body, apron, hat, face]:
+	for s in [body, apron, hat, face, headspr]:
 		s.layers = mask
 
 
@@ -141,6 +147,7 @@ func _nudge() -> void:
 	apron.translation = dl * 0.006
 	face.translation = dl * 0.012
 	hat.translation = dl * 0.018
+	headspr.translation = dl * 0.009
 
 
 func _refresh(force: bool) -> void:
@@ -167,7 +174,9 @@ func _refresh(force: bool) -> void:
 				view = "side"
 				flip = side < 0.0
 	var pose := "idle"
-	if carrying:
+	if down != "":
+		pose = "down_" + down
+	elif carrying:
 		pose = "carry"
 	elif walking:
 		pose = "walk" if int(_t * 5.0) % 2 == 0 else "walk2"
@@ -178,6 +187,12 @@ func _refresh(force: bool) -> void:
 	_flip = flip
 	var race: String = look["race"]
 	var key := "%s_%s" % [view, pose]
+	scale = Vector3.ONE
+	if down != "":
+		if _refresh_down(race):
+			return
+		key = "front_idle"
+		scale = Vector3(1.25, 0.35, 1.0)  # кадров «лёжа» ещё нет: просто сплющиваем
 	var bt := tex("res://assets/players/%s_%d_%s.png" % [race, int(look.get("skin", 0)), key])
 	if bt == null:
 		return
@@ -207,6 +222,61 @@ func _refresh(force: bool) -> void:
 	var fsc: float = fit["fs"] * ITEM_SC.get(f, 1.0) * fo[2]
 	var ft: Texture = acc_tex(race, f, view) if f != "" else null
 	_place(face, f, view, flip, fsc, cx + (face_cx(fit, row, view, ft, fsc) + fo[0]) * sg, H - (top + fit[row] + fo[1]), "center")
+	headspr.visible = false
+	if down != "":
+		hat.visible = false
+		face.visible = false
+	elif big_head:
+		_apply_big_head(bt, flip, W, H, float(hi.get("neck", top + 26)))
+
+
+const BIG_K := 1.7
+
+
+# большая голова: верх кадра (до шеи) рисуем ещё раз крупнее, шапку и очки растягиваем от шеи
+func _apply_big_head(bt: Texture, flip: bool, W: float, H: float, neck: float) -> void:
+	headspr.texture = bt
+	headspr.region_rect = Rect2(0, 0, W, neck)
+	headspr.pixel_size = PIXEL * BIG_K
+	headspr.flip_h = flip
+	headspr.offset = Vector2(-W / 2.0, (H - neck) / BIG_K)
+	headspr.visible = true
+	var nw := (H - neck) * PIXEL
+	for s in [hat, face]:
+		if not s.visible:
+			continue
+		var ps: float = s.pixel_size
+		var wy: float = s.offset.y * ps
+		var wx: float = s.offset.x * ps
+		s.pixel_size = ps * BIG_K
+		s.offset = Vector2(wx * BIG_K / s.pixel_size, (nw + (wy - nw) * BIG_K) / s.pixel_size)
+
+
+# кадр «лежит»: свой спрайт на расу/кожу, если уже нарисован
+func _refresh_down(race: String) -> bool:
+	var key := "down_" + down
+	var bt := tex("res://assets/players/%s_%d_%s.png" % [race, int(look.get("skin", 0)), key])
+	if bt == null:
+		return false
+	body.texture = bt
+	apron.texture = tex("res://assets/players/%s_%s_apron.png" % [race, key])
+	apron.modulate = APRONS[int(look.get("apron", 0)) % APRONS.size()]
+	var W: float = bt.get_width()
+	for s in [body, apron]:
+		s.flip_h = _flip
+		s.offset = Vector2(-W / 2.0, 0)
+	hat.visible = false
+	face.visible = false
+	headspr.visible = false
+	return true
+
+
+func set_state(p_down: String, p_big: bool) -> void:
+	if p_down == down and p_big == big_head:
+		return
+	down = p_down
+	big_head = p_big
+	_view = ""
 
 
 func _place(s: Sprite3D, id: String, view: String, flip: bool, sc: float, cx: float, y: float, align: String) -> void:

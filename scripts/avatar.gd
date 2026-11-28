@@ -12,6 +12,9 @@ var _pitch := 0.0
 
 var doll = null
 var _prev := Vector3.ZERO
+var curse := ""
+var stars = null
+var _step_t := 0.0
 
 
 func setup(id: int, n: int) -> void:
@@ -78,9 +81,27 @@ func set_look(l: Dictionary) -> void:
 		bubble_text = nick
 
 
+# оглушение и проклятия напарника (приходят по сети)
+func set_fx(down: String, p_curse: String) -> void:
+	curse = p_curse
+	if doll:
+		doll.set_state(down, p_curse == "bighead")
+	if down != "" and stars == null:
+		stars = load("res://scripts/fun.gd").make_stars(base_y * 1.9 if doll == null else 0.75)
+		add_child(stars)
+	elif down == "" and stars:
+		stars.queue_free()
+		stars = null
+
+
 func _process(delta: float) -> void:
 	translation = translation.linear_interpolate(_to, min(1.0, 12.0 * delta))
 	if doll:
 		doll.walking = translation.distance_to(_prev) > 0.6 * delta
+		if curse == "oink" and doll.walking:
+			_step_t -= delta
+			if _step_t <= 0.0:
+				_step_t = 0.38
+				Sfx.play_at("oink", global_transform.origin, 0.15, -4.0)
 		_prev = translation
 	rotation.y = lerp_angle(rotation.y, _rot, min(1.0, 12.0 * delta))

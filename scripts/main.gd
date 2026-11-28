@@ -60,7 +60,8 @@ const OPEN_SLOTS := [[1], [0, 1], [0, 1, 2]]
 const PORTAL := Vector3(-6.8, 1.3, -2.4)
 const FREEZER := Vector3(6.3, 0, -2.2)
 const NPC = preload("res://scripts/npc.gd")
-const PAY := {"chest": 12, "mimic": 8, "living": 6, "frozen": 10, "heavy": 5, "gift": 10}
+const COW_IDX := 32  # «живая» посылка, которая в коопе становится коровой
+const PAY := {"chest": 12, "mimic": 8, "living": 6, "frozen": 10, "heavy": 5, "gift": 10, "cow": 25}
 const Career = preload("res://scripts/career.gd")
 const UiTheme = preload("res://scripts/ui_theme.gd")
 const SAFE := Vector3(6.45, 0, -0.95)
@@ -145,6 +146,7 @@ var chaos_t := 6.0
 var chaos_over := false
 var no_day_inc := false
 var is_open := false
+var fun  # кооп/стрим-фишки (scripts/fun.gd)
 var movables := []
 var carrying = null  # декор в руках (режим «закрыто»)
 var ui_block := false
@@ -200,6 +202,9 @@ func _ready() -> void:
 	player.translation = Vector3(0, 0.05, -2.0)
 	add_child(player)
 	player.connect("look_changed", self, "_on_look_changed")
+	fun = load("res://scripts/fun.gd").new()
+	add_child(fun)
+	fun.setup(self)
 
 	_play_music()
 	Sfx.set_ambient(true)
@@ -872,19 +877,42 @@ func _new_parcel(i: int):
 	var t := tex(("boxes_en/box_%02d" if Settings.lang == "en" else "boxes/box_%02d") % i, false)
 	var typ: String = BOX_TYPES[i]
 	var sz: Vector3 = pick(sizes)
+	# кооп: сундук огромный, а одна «живая» посылка — корова в ящике; несут только вдвоём
+	var duo := false
+	if Net.active and typ == "chest":
+		duo = true
+	elif Net.active and i == COW_IDX:
+		typ = "cow"
+		duo = true
 	match typ:
 		"heavy":
 			sz = Vector3(0.55, 0.5, 0.55)
 		"gift", "frozen":
 			sz = Vector3(0.38, 0.38, 0.38)
 		"chest":
-			sz = Vector3(0.7, 0.5, 0.5)
+			sz = Vector3(1.0, 0.6, 0.6) if duo else Vector3(0.7, 0.5, 0.5)
+		"cow":
+			sz = Vector3(1.1, 0.75, 0.6)
 	p.setup(CODES[i], typ == "cursed", sz, t)
 	p.box_type = typ
+	p.duo = duo
+	if typ == "cow":
+		p.mass = 16.0
+		var cow_tex := tex("props/cow_crate", false) if ResourceLoader.exists("res://assets/props/cow_crate.png") else null
+		if cow_tex:
+			var cs := Sprite3D.new()
+			cs.texture = cow_tex
+			cs.pixel_size = 1.2 / cow_tex.get_width()
+			cs.billboard = SpatialMaterial.BILLBOARD_FIXED_Y
+			cs.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+			cs.translation.y = sz.y * 0.5
+			cs.offset = Vector2(0, cow_tex.get_height() / 2.0)
+			p.add_child(cs)
+			p.set_meta("cow", cs)
 	if typ == "heavy":
 		p.mass = 6.0  # тяжеленный ящик: далеко не швырнёшь
 	elif typ == "chest":
-		p.mass = 9.0
+		p.mass = 20.0 if duo else 9.0
 	p.rotation.y = rand_range(-0.2, 0.2)
 	p.connect("exploded", self, "_on_parcel_exploded")
 	p.connect("cracked", self, "_on_parcel_cracked")
@@ -900,11 +928,14 @@ func _spawn_parcels() -> void:
 		var typ: String = BOX_TYPES[i]
 		if typ == "frozen" and Game.lvl("freezer") == 0:
 			continue
-		if typ in ["mimic", "timer", "living"] and Game.day < 2:
+		if typ == "chest" and Game.day < 3 and not Net.active:
 			continue
-		if typ == "chest" and Game.day < 3:
+		if typ == "living" and Net.active and i == COW_IDX:
+			pass  # корова в коопе с первого дня
+		elif typ in ["mimic", "timer", "living"] and Game.day < 2:
 			continue
-		if not LETTERS.find(CODES[i].substr(0, 1)) in act:
+		var duo_item: bool = Net.active and (typ == "chest" or i == COW_IDX)
+		if not LETTERS.find(CODES[i].substr(0, 1)) in act and not duo_item:
 			continue
 		allowed.append(i)
 	allowed.shuffle()
@@ -918,10 +949,19 @@ func _spawn_parcels() -> void:
 			else:
 				back.append(i)
 		allowed = front + back
+	if Net.active:
+		# в коопе ноши на двоих — почти всегда в начале списка
+		var duo_first := []
+		for i in allowed.duplicate():
+			if (BOX_TYPES[i] == "chest" or i == COW_IDX) and randf() < 0.7:
+				allowed.erase(i)
+				duo_first.append(i)
+		allowed = duo_first + allowed
 	var count := int(min(allowed.size(), total_customers + 3))
 	total_customers = int(min(total_customers, count))
 	var pre := int(ceil(count / 2.0))
 	var fz := 0
+	var duo_k := 0
 	for n in count:
 		var i: int = allowed[n]
 		var p = _new_parcel(i)
@@ -938,6 +978,13 @@ func _spawn_parcels() -> void:
 			p.home = p.translation
 			p.from_portal = true
 			pile.append(p)
+			add_child(p)
+			parcels.append(p)
+		elif p.duo and n < pre:
+			# ноша на двоих стоит на полу склада, на полку не влезает
+			p.translation = [Vector3(-1.6, 0.5, -5.6), Vector3(1.6, 0.5, -5.6), Vector3(0.0, 0.5, -6.6)][duo_k % 3]
+			p.home = p.translation
+			duo_k += 1
 			add_child(p)
 			parcels.append(p)
 		elif n < pre:
@@ -1402,6 +1449,8 @@ func _physics_process(delta: float) -> void:
 		var pos: Vector3 = b.global_transform.origin
 		# Попадание коробкой в лицо любому клиенту
 		if b.thrown and not b.hit_done and b.linear_velocity.length() > 3.0:
+			if fun.check_ff(b, pos):
+				continue
 			for c in customers:
 				if not is_instance_valid(c) or c.state == "leaving" or c.kind == "ghost":
 					continue
@@ -1418,6 +1467,7 @@ func _physics_process(delta: float) -> void:
 						return
 					var v: Vector3 = b.linear_velocity
 					b.linear_velocity = Vector3(v.x * 0.2, 1.5, -abs(v.z) * 0.35 - 1.0)
+					fun.on_oops(b)
 					_on_face_hit(c)
 					break
 		# Сбить фонарь броском
@@ -1477,6 +1527,7 @@ func _on_face_hit(c) -> void:
 
 func _on_parcel_exploded(p) -> void:
 	var pos: Vector3 = p.global_transform.origin
+	fun.on_oops(p)
 	Sfx.play_at("boom", pos, 0.05, 8.0)
 	# вспышка
 	var fl := OmniLight.new()
@@ -1567,6 +1618,7 @@ func _deliver(p, c, penalty: int) -> void:
 		tut_step = 3
 	if c.scammer:
 		# отдали посылку мошеннику
+		fun.on_scam(p)
 		money = int(max(0, money - 20))
 		Sfx.play("reject", 0.0, -2.0)
 		_flash(tr("Это был МОШЕННИК! Чужая посылка уплыла. -20 монет"), 2.5)
@@ -1574,6 +1626,7 @@ func _deliver(p, c, penalty: int) -> void:
 		c.leave_with(tr("Хе-хе, спасибо, растяпа!"), true)
 		_refresh_hud()
 		return
+	fun.on_served(p)
 	var bonus := int(c.patience / c.max_patience * 15.0)
 	var earned := int(max(1, 10 + bonus - penalty))
 	var extra := ""
@@ -1583,8 +1636,8 @@ func _deliver(p, c, penalty: int) -> void:
 	if penalty > 0:
 		extra += tr("  (поднял с пола, -%d)") % penalty
 	if PAY.has(p.box_type) and not p.melted:
-		earned += PAY[p.box_type]
-		var names := {"chest": tr("сундук"), "mimic": tr("мимик"), "living": tr("живая"), "frozen": tr("холодная"), "heavy": tr("тяжёлая"), "gift": tr("чаевые за подарок")}
+		earned += PAY[p.box_type] + (15 if p.duo and p.box_type == "chest" else 0)
+		var names := {"chest": tr("сундук"), "mimic": tr("мимик"), "living": tr("живая"), "frozen": tr("холодная"), "heavy": tr("тяжёлая"), "gift": tr("чаевые за подарок"), "cow": tr("корова")}
 		extra += "  (%s +%d)" % [names[p.box_type], PAY[p.box_type]]
 	if p.box_type == "timer" and fuse_was != 0.0:
 		earned += 10
@@ -1765,12 +1818,15 @@ func _end_shift() -> void:
 		Game.save_game()
 	if Game.mode == "career" and Game.day == 1 and not Net.active:
 		txt += "\n\n" + tr("ОБУЧЕНИЕ: смена окончена! Жми «Закрыть пункт» — деньги уйдут в кассу, и наступит утро смены 2.")
+	var shame: String = fun.board_text()
+	if shame != "":
+		side.append(shame)
 	hud_panel_text.text = txt
 	hud_panel_side.text = PoolStringArray(side).join("\n")
 	hud_panel.visible = true
 	if Net.active:
 		Ach.unlock("ACH_COOP")
-		rpc("net_end_shift", txt)
+		rpc("net_end_shift", txt + ("\n" + shame if shame != "" else ""))
 
 
 # ---------------------------------------------------------------- rules / events
@@ -1837,11 +1893,12 @@ func _update_warehouse() -> void:
 	var dt := get_physics_process_delta_time()
 	lever_cd -= dt
 	if conv_mat:
-		conv_mat.uv1_offset.x -= dt * 0.9 * 1.2
+		var bs: float = fun.belt_speed() if fun else 0.9
+		conv_mat.uv1_offset.x -= dt * bs * 1.2
 		for b in belt_area.get_overlapping_bodies():
 			if b.is_in_group("parcel") and not b.held and b.mode == RigidBody.MODE_RIGID:
 				b.sleeping = false
-				b.linear_velocity.x = max(b.linear_velocity.x, 0.9)
+				b.linear_velocity.x = max(b.linear_velocity.x, bs)
 	if portal_sprite:
 		if portal_open_t > 0.0:
 			portal_open_t -= dt
@@ -3693,8 +3750,12 @@ remote func net_req_grab(code: String) -> void:
 	var id := get_tree().get_rpc_sender_id()
 	var p = _parcel_by_code(code)
 	_avatar(id)
+	if p and p.duo:
+		fun.duo_request(id, p)
+		return
 	if p == null or p.held or p.delivered or remote_hold[id].size() >= Game.carry_capacity():
 		return
+	p.set_meta("holder", id)
 	p.on_grabbed()
 	p.held = true
 	p.mode = RigidBody.MODE_KINEMATIC
@@ -3722,6 +3783,7 @@ remote func net_req_release(code: String, throw: bool, charge: float, dir: Vecto
 	p.linear_velocity = Vector3(vel.x, 0, vel.z)
 	if throw:
 		p.thrown = true
+		p.set_meta("thrower", id)
 		p.apply_central_impulse(dir * lerp(player.THROW_MIN, player.THROW_MAX, charge) * min(p.mass, 2.0))
 		Sfx.play_at("whoosh", p.global_transform.origin, 0.1, 0.0)
 

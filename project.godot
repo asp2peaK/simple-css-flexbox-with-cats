@@ -26,6 +26,7 @@ Sfx="*res://scripts/sfx.gd"
 Game="*res://scripts/game.gd"
 Net="*res://scripts/net.gd"
 Ach="*res://scripts/achievements.gd"
+Twitch="*res://scripts/twitch.gd"
 
 [display]
 

@@ -35,6 +35,7 @@ var from_portal := false
 var stolen := false
 var valuable := false  # ценная: лежит в сейфе
 var in_safe := false
+var duo := false  # только вдвоём (кооп): огромный сундук или корова
 
 
 func setup(p_code: String, p_cursed: bool, p_size: Vector3, tex: Texture) -> void:

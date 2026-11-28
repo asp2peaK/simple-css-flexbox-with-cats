@@ -1,0 +1,23 @@
+[remap]
+
+importer="wav"
+type="AudioStreamSample"
+path="res://.import/bonk_player.wav-1d4b828b0c370b1f1e13b56f1661e0da.sample"
+
+[deps]
+
+source_file="res://assets/sfx/bonk_player.wav"
+dest_files=[ "res://.import/bonk_player.wav-1d4b828b0c370b1f1e13b56f1661e0da.sample" ]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop_mode=0
+edit/loop_begin=0
+edit/loop_end=-1
+compress/mode=0
