@@ -132,6 +132,14 @@ func _ready() -> void:
 	if Net.pending_lobby != 0:
 		call_deferred("_on_lobby_ready")
 
+	var nb := Button.new()
+	nb.text = tr("Новости") + "  v" + Game.VERSION
+	nb.theme = box.theme
+	nb.add_font_override("font", font_big)
+	nb.rect_position = Vector2(8, 330)
+	nb.connect("pressed", self, "_news")
+	add_child(nb)
+
 	var help := Label.new()
 	help.add_font_override("font", font_big)
 	help.modulate = Color(1, 1, 1, 0.7)
@@ -143,7 +151,7 @@ func _ready() -> void:
 	fs.size = 9
 	help.add_font_override("font", fs)
 	add_child(help)
-	if not Game.splash_done and not "--menushot" in OS.get_cmdline_args() and not "--settingsshot" in OS.get_cmdline_args() and not "--demoshot" in OS.get_cmdline_args() and not "--coopshot" in OS.get_cmdline_args():
+	if not Game.splash_done and not "--menushot" in OS.get_cmdline_args() and not "--settingsshot" in OS.get_cmdline_args() and not "--demoshot" in OS.get_cmdline_args() and not "--coopshot" in OS.get_cmdline_args() and not "--newsshot" in OS.get_cmdline_args():
 		Game.splash_done = true
 		_studio_splash()
 	if Settings.reopen_settings:
@@ -182,6 +190,14 @@ func _ready() -> void:
 		imgc.flip_y()
 		imgc.save_png(OS.get_environment("SHOT_DIR") + "/coop.png")
 		get_tree().quit()
+	if "--newsshot" in OS.get_cmdline_args():
+		yield(get_tree().create_timer(0.6), "timeout")
+		_news()
+		yield(get_tree().create_timer(0.8), "timeout")
+		var imgn := get_viewport().get_texture().get_data()
+		imgn.flip_y()
+		imgn.save_png(OS.get_environment("SHOT_DIR") + "/news_%s.png" % Settings.lang)
+		get_tree().quit()
 	if "--menushot" in OS.get_cmdline_args():
 		yield(get_tree().create_timer(1.0), "timeout")
 		var img := get_viewport().get_texture().get_data()
@@ -200,6 +216,21 @@ func _button(parent: Control, text: String, target: String) -> Button:
 
 
 var ach_panel: Control
+var news_panel: Control
+
+
+func _news() -> void:
+	if news_panel and is_instance_valid(news_panel):
+		news_panel.queue_free()
+	news_panel = load("res://scripts/news.gd").build(font_big, load("res://scripts/ui_theme.gd").make())
+	var back := Button.new()
+	back.text = tr("Назад")
+	back.add_font_override("font", font_big)
+	back.connect("pressed", news_panel, "queue_free")
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	news_panel.get_child(0).add_child(back)
+	add_child(news_panel)
+	back.call_deferred("grab_focus")
 
 
 func _achievements() -> void:
