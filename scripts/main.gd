@@ -91,6 +91,7 @@ var hud_event: Label
 var hud_tut: Label
 var hud_help: Label
 var cat  # кот на стойке (scripts/cat.gd)
+var returns  # стол возвратов (scripts/returns.gd)
 var _pad_was := false
 var pause_panel: PanelContainer
 var shop_panel: PanelContainer
@@ -208,6 +209,10 @@ func _ready() -> void:
 	fun = load("res://scripts/fun.gd").new()
 	add_child(fun)
 	fun.setup(self)
+	returns = load("res://scripts/returns.gd").new()
+	returns.name = "Returns"
+	add_child(returns)
+	returns.setup(self)
 
 	_play_music()
 	Sfx.set_ambient(true)
@@ -246,6 +251,8 @@ func _ready() -> void:
 		_hc_test()
 	if "--cattest" in OS.get_cmdline_args():
 		_cat_test()
+	if "--rettest" in OS.get_cmdline_args():
+		_ret_test()
 	for a in OS.get_cmdline_args():
 		if a.begins_with("--showcase="):
 			var sc = load("res://scripts/showcase.gd").new()
@@ -1207,6 +1214,7 @@ func _spawn_customer() -> void:
 	c.connect("escaped", self, "_on_thief_escaped", [c])
 	var target := Vector3(SLOTS[slot] + rand_range(-0.4, 0.4), 0, 0.9)
 	c.set_meta("target", target)
+	returns.maybe_mark(c, kind)
 	c.walk_to(target, "arrive")
 	c.net_id = spawned
 	if Net.active:
@@ -1240,6 +1248,7 @@ func _on_customer_left(happy: bool, c) -> void:
 	if Net.active:
 		rpc("net_customer_leave", c.net_id, happy, c.bubble_text)
 	_drop_receipt(c)
+	returns.on_left(c)
 	if c == maga_c:
 		maga_pending = false
 		if happy:
@@ -1273,6 +1282,9 @@ func _customer_gone(c) -> void:
 
 func _on_customer_arrived(c) -> void:
 	_refresh_hud()
+	if c.has_meta("ret"):
+		returns.on_arrived(c)
+		return
 	_make_receipt(c)
 	if served >= 1 or spawned >= 2:
 		_tip("receipt")
@@ -1349,6 +1361,8 @@ func _press_kick(btn) -> void:
 			c = w
 	if c == null:
 		_flash(tr("У этого окна никого нет."), 1.5)
+		return
+	if returns.on_kick(c):
 		return
 	if c.scammer:
 		stat("scam")
@@ -1515,7 +1529,7 @@ func _physics_process(delta: float) -> void:
 			b.hall_time = 0.0
 
 	for b in counter_area.get_overlapping_bodies():
-		if not b.is_in_group("parcel") or b.held or b.delivered:
+		if not b.is_in_group("parcel") or b.held or b.delivered or b.has_meta("ret"):
 			continue
 		if b.linear_velocity.length() > 0.6:
 			continue
@@ -4590,4 +4604,36 @@ func _cat_test() -> void:
 		yield(get_tree().create_timer(0.2), "timeout")
 	print("cat state=", cat.state, " angry=", cat.angry_t)
 	_save(dir + "/cat_angry.png")
+	get_tree().quit()
+
+
+func _ret_test() -> void:
+	# возврат: первый клиент — возвратный с испорченной коробкой; выгоняем; второй — кладём в лоток
+	var dir := OS.get_environment("SHOT_DIR")
+	var c = null
+	for k in 40:
+		yield(get_tree().create_timer(0.5), "timeout")
+		for w in waiting():
+			if w.has_meta("ret_box"):
+				c = w
+		if c:
+			break
+	if c == null:
+		print("RET: no return customer")
+		get_tree().quit()
+		return
+	var p = c.get_meta("ret_box")
+	print("RET order=", c.order, " dmg=", p.get_meta("dmg") if p.has_meta("dmg") else "")
+	player.global_transform.origin = Vector3(c.global_transform.origin.x, 0.05, -1.2)
+	player.rotation.y = PI
+	player.cam.rotation.x = -0.45
+	yield(get_tree().create_timer(1.0), "timeout")
+	_save(dir + "/ret_counter.png")
+	# кладём коробку в лоток
+	p.global_transform.origin = returns.TRAY_POS + Vector3(0, 0.4, 0)
+	p.linear_velocity = Vector3.ZERO
+	yield(get_tree().create_timer(0.6), "timeout")
+	_save(dir + "/ret_stamp.png")
+	yield(get_tree().create_timer(1.5), "timeout")
+	print("RET money=", money, " box gone=", not is_instance_valid(p))
 	get_tree().quit()

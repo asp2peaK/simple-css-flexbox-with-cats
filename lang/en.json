@@ -661,5 +661,22 @@
  "[ЛКМ/E] Погладить кота": "[LMB/E] Pet the cat",
  "Кот обиделся. Дай ему остыть.": "The cat is offended. Give it a moment.",
  "Кот: «Ш-ш-ш!» Перегладил.": "Cat: \"Hsss!\" Too much petting.",
- "Кот мурчит. Клиенты чуть подобрели (+терпение).": "The cat purrs. Customers calm down a bit (+patience)."
+ "Кот мурчит. Клиенты чуть подобрели (+терпение).": "The cat purrs. Customers calm down a bit (+patience).",
+ "В": "R",
+ "Лоток возвратов: сюда кладут ЦЕЛЫЕ возвращённые коробки": "Returns tray: put INTACT returned boxes here",
+ "Хочу ВЕРНУТЬ посылку!": "I want to RETURN a parcel!",
+ "Хочу ВЕРНУТЬ посылку! Вот она, на стойке.": "I want to RETURN a parcel! It's on the counter.",
+ "ВОЗВРАТ! Целую коробку — в лоток возвратов (слева на стойке).\nИспорченную (порвана, мокрая, следы, вмятина) не принимай — жми «ВОН!»": "RETURN! Put an intact box in the returns tray (left end of the counter).\nDon't accept a damaged one (torn, wet, boot print, dent): press «GET OUT!»",
+ "порвана": "torn",
+ "мокрое пятно": "wet stain",
+ "след ботинка": "boot print",
+ "вмятина": "dent",
+ "Возврат принят. +8 монет": "Return accepted. +8 coins",
+ "Испорченный возврат (%s)! Гильдия штрафует: -10": "Damaged return (%s)! The Guild fines you: -10",
+ "Спасибо! Деньги верните на карту.": "Thanks! Refund to my card, please.",
+ "Хе-хе, прокатило!": "Heh, it worked!",
+ "Правильно! Испорченное не принимаем. +6 монет": "Right! We don't take damaged goods. +6 coins",
+ "Да она такая и была!..": "It was like that already!..",
+ "ПРИНЯТО": "ACCEPTED",
+ "ОТКАЗ": "REJECTED"
 }
