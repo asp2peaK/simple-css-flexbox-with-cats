@@ -12,7 +12,8 @@ const NAMES := ["squeak", "thud1", "thud2", "thud3", "pickup", "whoosh", "bonk",
 	"tick", "portal", "bite", "kick", "lid",
 	"music_swamp", "music_crypt", "music_castle", "music_ice", "music_boss", "music_chaos",
 	"rec_jazz", "rec_lofi", "rec_polka",
-	"oink", "moo", "dizzy", "curse", "siren", "bonk_player", "vote"]
+	"oink", "moo", "dizzy", "curse", "siren", "bonk_player", "vote",
+	"purr", "hiss", "meow", "stamp", "paper", "event", "splash", "beep", "coffee", "upgrade"]
 
 var streams := {}
 var ambient: AudioStreamPlayer

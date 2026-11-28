@@ -657,5 +657,9 @@
  "УВОЛЕН!\n\nТри злых клиента за смену. Гильдия забрала ключи.\nТы дошёл до смены %d.": "FIRED!\n\nThree angry customers in one shift. The Guild took your keys.\nYou made it to shift %d.",
  "НОВЫЙ РЕКОРД ХАРДКОРА!": "NEW HARDCORE RECORD!",
  "Карьера начнётся заново с первой смены.": "Your career starts over from shift 1.",
- "ХАРДКОР": "HARDCORE"
+ "ХАРДКОР": "HARDCORE",
+ "[ЛКМ/E] Погладить кота": "[LMB/E] Pet the cat",
+ "Кот обиделся. Дай ему остыть.": "The cat is offended. Give it a moment.",
+ "Кот: «Ш-ш-ш!» Перегладил.": "Cat: \"Hsss!\" Too much petting.",
+ "Кот мурчит. Клиенты чуть подобрели (+терпение).": "The cat purrs. Customers calm down a bit (+patience)."
 }

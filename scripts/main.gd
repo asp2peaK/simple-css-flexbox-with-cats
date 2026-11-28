@@ -90,6 +90,7 @@ var hud_bubbles := []
 var hud_event: Label
 var hud_tut: Label
 var hud_help: Label
+var cat  # кот на стойке (scripts/cat.gd)
 var _pad_was := false
 var pause_panel: PanelContainer
 var shop_panel: PanelContainer
@@ -243,6 +244,8 @@ func _ready() -> void:
 		_rejoin_test()
 	if "--hctest" in OS.get_cmdline_args():
 		_hc_test()
+	if "--cattest" in OS.get_cmdline_args():
+		_cat_test()
 	for a in OS.get_cmdline_args():
 		if a.begins_with("--showcase="):
 			var sc = load("res://scripts/showcase.gd").new()
@@ -515,7 +518,10 @@ func _build_props() -> void:
 	var cat_name := "cat"
 	if Game.decor.has("cat_hat") and ResourceLoader.exists("res://assets/props/cat_hat.png"):
 		cat_name = "cat_hat"
-	prop(cat_name, Vector3(4.8, 0.98, -0.1), 0, 0.42 if cat_name == "cat" else 0.6, true)
+	var cat_spr := prop(cat_name, Vector3(4.8, 0.98, -0.1), 0, 0.42 if cat_name == "cat" else 0.6, true)
+	cat = load("res://scripts/cat.gd").new()
+	add_child(cat)
+	cat.setup(self, cat_spr, cat_name != "cat")
 	prop("clock", Vector3(-4.0, 2.25, -10.88), 0, 0.75)
 	prop("cobweb", Vector3(-6.45, 2.55, -10.88), 0, 0.7)
 	prop("cobweb", Vector3(6.45, 2.55, -10.88), 0, 0.7, false, true)
@@ -4541,4 +4547,47 @@ func _hc_test() -> void:
 	yield(get_tree().create_timer(1.0), "timeout")
 	print("fired=", hc_fired, " day now=", Game.day, " best=", Game.hc_best, " hardcore=", Game.hardcore)
 	_save(OS.get_environment("SHOT_DIR") + "/hc_fired.png")
+	get_tree().quit()
+
+
+func _pet_cat(_b) -> void:
+	cat.pet()
+	if net_client():
+		rpc_id(1, "net_pet_cat")
+	elif Net.active:
+		rpc("net_pet_cat_fx")
+
+
+remote func net_pet_cat() -> void:
+	if Net.is_host:
+		cat.pet()
+		rpc("net_pet_cat_fx")
+
+
+remote func net_pet_cat_fx() -> void:
+	if cat and cat.has_method("pet") and get_tree().get_rpc_sender_id() == 1:
+		cat.bounce = 1.0
+		cat._heart()
+
+
+func _cat_test() -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	yield(get_tree().create_timer(2.0), "timeout")
+	player.global_transform.origin = Vector3(4.8, 0.05, -1.1)
+	player.rotation.y = PI
+	player.cam.rotation.x = -0.5
+	yield(get_tree().create_timer(4.0), "timeout")
+	_save(dir + "/cat_sleep.png")
+	print("look=", player.looked_thing() != null and player.looked_thing().has_meta("cat"))
+	player.press_thing()
+	yield(get_tree().create_timer(0.3), "timeout")
+	_save(dir + "/cat_pet1.png")
+	player.press_thing()
+	yield(get_tree().create_timer(0.15), "timeout")
+	_save(dir + "/cat_pet2.png")
+	for k in 4:
+		player.press_thing()
+		yield(get_tree().create_timer(0.2), "timeout")
+	print("cat state=", cat.state, " angry=", cat.angry_t)
+	_save(dir + "/cat_angry.png")
 	get_tree().quit()
