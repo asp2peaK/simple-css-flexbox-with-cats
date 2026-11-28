@@ -232,12 +232,15 @@ func _ready() -> void:
 	if Net.active:
 		hud_event.text = (tr("ХОСТ") if Net.is_host else tr("КООП")) + tr(": игроков %d") % (Net.peers.size() + 1)
 		_send_look_later()
+		_hook_net_peers()
 
 	if Settings.reopen_settings:
 		Settings.reopen_settings = false
 		call_deferred("_reopen_settings")
 	if "--shot" in OS.get_cmdline_args():
 		_screenshot_mode()
+	if "--rejointest" in OS.get_cmdline_args():
+		_rejoin_test()
 	for a in OS.get_cmdline_args():
 		if a.begins_with("--showcase="):
 			var sc = load("res://scripts/showcase.gd").new()
@@ -1193,6 +1196,7 @@ func _spawn_customer() -> void:
 	c.connect("arrived", self, "_on_customer_arrived", [c])
 	c.connect("escaped", self, "_on_thief_escaped", [c])
 	var target := Vector3(SLOTS[slot] + rand_range(-0.4, 0.4), 0, 0.9)
+	c.set_meta("target", target)
 	c.walk_to(target, "arrive")
 	c.net_id = spawned
 	if Net.active:
@@ -2121,9 +2125,19 @@ func _update_tutorial() -> void:
 
 # ---------------------------------------------------------------- pause & shop
 func _set_paused(on: bool) -> void:
+	if net_client():
+		# гость: меню паузы без остановки мира (мир крутит хост)
+		if net_paused and not on:
+			return
+		pause_panel.visible = on
+		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if on else Input.MOUSE_MODE_CAPTURED)
+		return
 	get_tree().paused = on
 	pause_panel.visible = on
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if on else Input.MOUSE_MODE_CAPTURED)
+	if Net.active and Net.is_host:
+		drop_wait = false
+		rpc("net_pause", on)
 
 
 func _button(parent: Control, text: String, target: String, args := []) -> Button:
@@ -4302,4 +4316,143 @@ func _test13() -> void:
 		yield(get_tree().create_timer(4.0), "timeout")
 	print("reward: ears=", "mouse_ears" in Settings.owned, " plush=", Game.decor.has("mouse_queen"), " tokens=", Game.tokens)
 	_save(OS.get_environment("SHOT_DIR") + "/t13_reward.png")
+	get_tree().quit()
+
+
+# ---------------------------------------------------------------- кооп: пауза хоста и переподключение
+var net_paused := false  # гость: хост поставил паузу
+var drop_wait := false  # хост: пауза, потому что напарник отвалился
+var pause_note: Label
+
+
+func _hook_net_peers() -> void:
+	var t := get_tree()
+	if not t.is_connected("network_peer_disconnected", self, "_on_net_peer_gone"):
+		t.connect("network_peer_disconnected", self, "_on_net_peer_gone")
+	if Net.is_host and not t.is_connected("network_peer_connected", self, "_on_net_peer_back"):
+		t.connect("network_peer_connected", self, "_on_net_peer_back")
+	if net_client():
+		rpc_id(1, "net_hello_ready")
+
+
+func _pause_note(t: String) -> void:
+	if pause_note == null:
+		pause_note = Label.new()
+		pause_note.add_font_override("font", font_big)
+		pause_note.align = Label.ALIGN_CENTER
+		pause_note.autowrap = true
+		pause_note.rect_position = Vector2(120, 62)
+		pause_note.rect_size = Vector2(400, 40)
+		pause_note.add_color_override("font_color", Color(1, 0.85, 0.4))
+		pause_panel.get_parent().add_child(pause_note)
+	pause_note.text = t
+	pause_note.visible = t != ""
+
+
+func _on_net_peer_gone(id: int) -> void:
+	if avatars.has(id):
+		var av = avatars[id]
+		var at: Vector3 = av.global_transform.origin
+		if is_instance_valid(av):
+			av.queue_free()
+		avatars.erase(id)
+		# коробки из рук ушедшего падают на пол
+		for b in remote_hold.get(id, []):
+			if is_instance_valid(b) and not b.delivered:
+				b.held = false
+				b.global_transform.origin = at + Vector3(0, 1.0, 0)
+				if Net.is_host:
+					b.mode = RigidBody.MODE_RIGID
+					b.sleeping = false
+		remote_hold.erase(id)
+	if fun and fun.has_method("peer_gone"):
+		fun.peer_gone(id)
+	hud_event.text = (tr("ХОСТ") if Net.is_host else tr("КООП")) + tr(": игроков %d") % (Net.peers.size() + 1)
+	if Net.is_host and not shift_over:
+		_flash(tr("Напарник отключился. Пауза: ждём, пока он зайдёт снова (ESC — играть дальше)."), 4.0)
+		if not get_tree().paused:
+			_set_paused(true)
+			drop_wait = true
+		_pause_note(tr("Напарник отключился. Ждём переподключения..."))
+
+
+func _on_net_peer_back(id: int) -> void:
+	if shift_over or not Net.is_host:
+		return
+	# вернувшийся (или новый) игрок: запускаем у него ту же смену, потом досылаем состояние
+	Net.rpc_id(id, "_start", Net.seed_value, Game.day, Game.upgrades, Game.event)
+	_pause_note(tr("Напарник заходит..."))
+
+
+remote func net_hello_ready() -> void:
+	if not Net.is_host:
+		return
+	var id := get_tree().get_rpc_sender_id()
+	var arr := []
+	for p in parcels:
+		if is_instance_valid(p) and not p.delivered:
+			arr.append([p.code, p.global_transform.origin, p.global_transform.basis.get_rotation_quat(), p.from_portal])
+	var cs := []
+	for c in customers:
+		if is_instance_valid(c) and c.state != "leaving":
+			cs.append([c.net_id, c.kind, c.order, c.line, c.slot, c.patience,
+				c.get_meta("target") if c.has_meta("target") else c.global_transform.origin,
+				c.scammer, c.fake, c.receipt_code])
+	rpc_id(id, "net_catchup", arr, cs, money, served, spawned, total_customers)
+	if get_tree().paused:
+		rpc_id(id, "net_pause", true)
+	if drop_wait:
+		_set_paused(false)
+	_pause_note("")
+	_flash(tr("Напарник снова в игре!"), 2.0)
+	hud_event.text = tr("ХОСТ") + tr(": игроков %d") % (Net.peers.size() + 1)
+	_send_look_later()
+
+
+remote func net_catchup(arr: Array, cs: Array, m: int, sv: int, sp: int, tot: int) -> void:
+	var alive := []
+	for e in arr:
+		alive.append(e[0])
+		if e[3]:
+			net_portal_add(e[0])
+		var p = _parcel_by_code(e[0])
+		if p:
+			p.global_transform = Transform(Basis(e[2]), e[1])
+			p.set_meta("net_to", p.global_transform)
+	for e in cs:
+		var known := false
+		for c in customers:
+			if is_instance_valid(c) and c.net_id == e[0]:
+				known = true
+		if not known:
+			net_customer(e[0], e[1], e[2], e[3], e[4], e[5], e[6], e[7], e[8], e[9])
+			var c2 = customers.back()
+			c2.translation = e[6]
+	net_state(alive, m, sv, sp, tot)
+	portal_open_t = 0.0
+
+
+remote func net_pause(on: bool) -> void:
+	net_paused = on
+	get_tree().paused = on
+	pause_panel.visible = on
+	_pause_note(tr("Хост поставил паузу") if on else "")
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE if on else Input.MOUSE_MODE_CAPTURED)
+
+
+func _rejoin_test() -> void:
+	# кооп: гость вылетает и заходит снова (см. tools/test/rejoin.sh)
+	var dir := OS.get_environment("SHOT_DIR")
+	var tag := "HOST" if Net.is_host else "CLIENT"
+	for k in 8:
+		yield(get_tree().create_timer(5.0), "timeout")
+		var n := 0
+		for p in parcels:
+			if is_instance_valid(p) and not p.delivered:
+				n += 1
+		print("%s t=%d parcels=%d customers=%d money=%d paused=%s peers=%s" % [tag, (k + 1) * 5, n, customers.size(), money, get_tree().paused, Net.peers])
+		if k == 1 and not Net.is_host:
+			_save(dir + "/rj_client.png")
+	if Net.is_host:
+		_save(dir + "/rj_host.png")
 	get_tree().quit()

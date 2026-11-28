@@ -641,5 +641,10 @@
  "Можно назначать клавиши и кнопки мыши. Геймпад: левый стик — ходить, правый — смотреть, RT — взять/бросить, LT/B — поставить, A — нажать, Start — пауза.": "You can bind keys and mouse buttons. Gamepad: left stick walk, right stick look, RT grab/throw, LT/B place, A press, Start pause.",
  "Папка с логами": "Logs folder",
  "Режим стримера (скрыть ники и IP)": "Streamer mode (hide nicks and IP)",
- "другу %d": "friend %d"
+ "другу %d": "friend %d",
+ "Напарник отключился. Пауза: ждём, пока он зайдёт снова (ESC — играть дальше).": "Your partner disconnected. Paused until they rejoin (ESC to keep playing).",
+ "Напарник отключился. Ждём переподключения...": "Partner disconnected. Waiting for them to rejoin...",
+ "Напарник заходит...": "Partner is joining...",
+ "Напарник снова в игре!": "Your partner is back!",
+ "Хост поставил паузу": "The host paused the game"
 }

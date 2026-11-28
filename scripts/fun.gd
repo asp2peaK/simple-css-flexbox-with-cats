@@ -665,3 +665,20 @@ func _unexcept_later(p) -> void:
 	yield(get_tree().create_timer(0.6), "timeout")
 	if is_instance_valid(p) and is_instance_valid(player()):
 		player().remove_collision_exception_with(p)
+
+
+# напарник отключился: отпускаем его край сундука
+func peer_gone(id: int) -> void:
+	for code in duo.keys():
+		var hs: Array = duo[code]
+		if id in hs:
+			hs.erase(id)
+			if hs.empty():
+				duo.erase(code)
+				var p = main._parcel_by_code(code)
+				if p:
+					_duo_drop(p)
+			else:
+				var p2 = main._parcel_by_code(code)
+				if p2:
+					_duo_sync(p2)
