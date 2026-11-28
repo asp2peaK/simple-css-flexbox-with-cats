@@ -84,45 +84,59 @@ func _unhandled_input(event: InputEvent) -> void:
 		rotate_y(-event.relative.x * SENS * Settings.sens * inv)
 		cam.rotate_x(-event.relative.y * SENS * Settings.sens * inv)
 		cam.rotation.x = clamp(cam.rotation.x, -1.4, 1.4)
-	elif stun_t > 0.0:
+		return
+	var grab_p := event.is_action_pressed("grab")
+	var grab_r := event.is_action_released("grab")
+	var place_p := event.is_action_pressed("place")
+	var inter_p := event.is_action_pressed("interact")
+	if not (grab_p or grab_r or place_p or inter_p):
+		return
+	# клик мышью, когда курсор свободен (после меню), сначала просто ловит мышь
+	if event is InputEventMouseButton and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED and not Pad.active:
+		if event.pressed:
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		return
+	if stun_t > 0.0:
 		return  # лежим, звёздочки
-	elif duo and ((event is InputEventMouseButton and event.pressed) or event.is_action_pressed("interact")):
-		if event is InputEventMouseButton and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
-			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-			return
+	if duo and (grab_p or place_p or inter_p):
 		fun().duo_release_local()
-	elif get_parent().get("ui_block") and ((event is InputEventMouseButton and event.pressed) or event.is_action_pressed("interact")):
+	elif get_parent().get("ui_block") and (grab_p or place_p or inter_p):
 		# несём декор или читаем доску: клик обрабатывает пункт
-		if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
-			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-			return
 		get_parent().ui_click(event)
-	elif event is InputEventMouseButton and not event.pressed and event.button_index == BUTTON_LEFT:
+	elif grab_r:
 		if charging and held:
 			release(true)
 		charging = false
 		charge = 0.0
-	elif event is InputEventMouseButton and event.pressed:
-		if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
-			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-			return
-		if event.button_index == BUTTON_LEFT:
-			if looked_thing() and not held:
-				press_thing()
-			elif can_grab_more() and looked_parcel():
-				try_grab()
-			elif held:
-				charging = true  # зажал: копим силу, отпустил: бросок
-				charge = 0.0
-		elif event.button_index == BUTTON_RIGHT and held:
-			release(false)
-	elif event.is_action_pressed("interact"):
+	elif grab_p:
+		if looked_thing() and not held:
+			press_thing()
+		elif can_grab_more() and looked_parcel():
+			try_grab()
+		elif held:
+			charging = true  # зажал: копим силу, отпустил: бросок
+			charge = 0.0
+	elif place_p and held:
+		release(false)
+	elif inter_p:
 		if looked_thing():
 			press_thing()
 		elif can_grab_more() and looked_parcel():
 			try_grab()
 		elif held:
 			release(false)
+
+
+func _pad_look(delta: float) -> void:
+	if Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE or get_tree().paused:
+		return
+	var v: Vector2 = Pad.look_vector(delta) * Settings.sens
+	if v == Vector2.ZERO:
+		return
+	var inv := -1.0 if curse == "invert" else 1.0
+	rotate_y(-v.x * inv)
+	cam.rotate_x(-v.y * inv)
+	cam.rotation.x = clamp(cam.rotation.x, -1.4, 1.4)
 
 
 func looked_parcel():
@@ -309,6 +323,8 @@ func place_spot(p):
 
 
 func _physics_process(delta: float) -> void:
+	if not get_parent().get("shift_over"):
+		_pad_look(delta)
 	velocity.y -= 9.8 * delta
 	var inp := Vector2(
 		Input.get_action_strength("move_right") - Input.get_action_strength("move_left"),

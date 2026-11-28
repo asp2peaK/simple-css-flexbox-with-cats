@@ -22,6 +22,7 @@ config/icon="res://icon.png"
 [autoload]
 
 Settings="*res://scripts/settings.gd"
+Pad="*res://scripts/pad.gd"
 Sfx="*res://scripts/sfx.gd"
 Game="*res://scripts/game.gd"
 Net="*res://scripts/net.gd"
@@ -54,3 +55,10 @@ common/enable_pause_aware_picking=true
 quality/driver/driver_name="GLES2"
 quality/driver/fallback_to_gles2=true
 environment/default_clear_color=Color( 0.05, 0.04, 0.05, 1 )
+
+[logging]
+
+file_logging/enable_file_logging=true
+file_logging/enable_file_logging.pc=true
+file_logging/log_path="user://logs/godot.log"
+file_logging/max_log_files=5

@@ -366,6 +366,7 @@ func _coop() -> void:
 	v.add_child(row)
 	ip_edit = LineEdit.new()
 	ip_edit.text = "127.0.0.1"
+	ip_edit.secret = Settings.streamer  # режим стримера: IP не видно на экране
 	ip_edit.rect_min_size = Vector2(130, 0)
 	ip_edit.add_font_override("font", font_big)
 	row.add_child(ip_edit)
@@ -444,7 +445,7 @@ func _refresh_friends() -> void:
 	var list: Array = Net.friends_in_lobbies()
 	for i in min(list.size(), 3):
 		var b := Button.new()
-		b.text = tr("Зайти к %s") % list[i][0]
+		b.text = tr("Зайти к %s") % (tr("другу %d") % (i + 1) if Settings.streamer else list[i][0])
 		b.add_font_override("font", font_big)
 		b.connect("pressed", self, "_coop_join_lobby", [list[i][1]])
 		friends_box.add_child(b)

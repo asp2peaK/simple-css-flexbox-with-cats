@@ -89,6 +89,8 @@ var hud_center: Label
 var hud_bubbles := []
 var hud_event: Label
 var hud_tut: Label
+var hud_help: Label
+var _pad_was := false
 var pause_panel: PanelContainer
 var shop_panel: PanelContainer
 var shop_box: VBoxContainer
@@ -302,7 +304,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_open_shop()
 		else:
 			get_tree().reload_current_scene()
-	elif event is InputEventKey and event.pressed and event.physical_scancode == KEY_N:
+	elif event.is_action_pressed("shop"):
 		_open_shop()
 
 
@@ -2089,7 +2091,7 @@ func _blackout() -> void:
 # ---------------------------------------------------------------- tutorial
 func _update_tutorial() -> void:
 	if tut_step < 0:
-		hud_tut.text = tip_text
+		hud_tut.text = Pad.prompt(tip_text)
 		return
 	var t := ""
 	match tut_step:
@@ -2109,7 +2111,7 @@ func _update_tutorial() -> void:
 			t = tr("Неси к стойке. ПКМ — положить аккуратно, зажать ЛКМ — швырнуть (сильнее держишь — дальше летит).")
 		3:
 			t = tr("Отлично! Дальше сам. Следи за терпением клиентов (полоска над головой). Когда все уйдут, смена закончится. Удачи!")
-	hud_tut.text = t
+	hud_tut.text = Pad.prompt(t)
 	if tut_step == 3 and not Game.tutorial_done:
 		Game.tutorial_done = true
 		Game.save_game()
@@ -2362,8 +2364,9 @@ func _build_hud() -> void:
 	hud_hint.valign = Label.VALIGN_BOTTOM
 	hud_hint.autowrap = true
 
-	var help := _label(root, font_small, Vector2(8, 344))
-	help.text = tr("WASD — ходить   мышь — смотреть   ESC — пауза")
+	hud_help = _label(root, font_small, Vector2(8, 344))
+	hud_help.text = tr("WASD — ходить   мышь — смотреть   ESC — пауза")
+	var help := hud_help
 	help.modulate = Color(1, 1, 1, 0.6)
 
 	hud_center = _label(root, font_big, Vector2(20, 72))
@@ -2495,7 +2498,7 @@ func _label(parent: Control, f: Font, pos: Vector2) -> Label:
 
 
 func _on_look_changed(t: String) -> void:
-	hud_hint.text = t
+	hud_hint.text = Pad.prompt(t)
 
 
 func _process(_delta: float) -> void:
@@ -2505,6 +2508,9 @@ func _process(_delta: float) -> void:
 	_update_tutorial()
 	_update_tut_arrow()
 	_update_maga(_delta)
+	if Pad.active != _pad_was:
+		_pad_was = Pad.active
+		hud_help.text = Pad.prompt(tr("WASD — ходить   мышь — смотреть   ESC — пауза"))
 	# подложки под текстом: только когда текст есть, высота по тексту
 	for l in [hud_tut, hud_center, hud_hint]:
 		l.visible = l.text != ""
@@ -2567,7 +2573,7 @@ func _refresh_hud() -> void:
 func _flash(t: String, dur: float) -> void:
 	_flash_id += 1
 	var id := _flash_id
-	hud_center.text = t
+	hud_center.text = Pad.prompt(t)
 	yield(get_tree().create_timer(dur), "timeout")
 	if id == _flash_id:
 		hud_center.text = ""

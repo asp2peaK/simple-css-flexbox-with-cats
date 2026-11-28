@@ -80,6 +80,7 @@ func build(f: Font) -> void:
 	var tw := LineEdit.new()
 	tw.text = Settings.twitch
 	tw.placeholder_text = tr("ник канала")
+	tw.secret = Settings.streamer
 	tw.rect_min_size = Vector2(170, 0)
 	tw.add_font_override("font", font)
 	tw.connect("text_entered", self, "_on_twitch")
@@ -89,12 +90,30 @@ func build(f: Font) -> void:
 	kb.text = tr("Управление (клавиши)")
 	kb.add_font_override("font", font)
 	kb.connect("pressed", self, "_open_keys")
-	v.add_child(kb)
+	var row5 := HBoxContainer.new()
+	v.add_child(row5)
+	row5.add_child(kb)
+	var lb := Button.new()
+	lb.text = tr("Папка с логами")
+	lb.add_font_override("font", font)
+	lb.connect("pressed", Settings, "open_logs")
+	row5.add_child(lb)
+	var sm := CheckBox.new()
+	sm.text = tr("Режим стримера (скрыть ники и IP)")
+	sm.pressed = Settings.streamer
+	sm.add_font_override("font", font)
+	sm.connect("toggled", self, "_on_streamer")
+	v.add_child(sm)
 	var close := Button.new()
 	close.text = tr("Готово")
 	close.add_font_override("font", font)
 	close.connect("pressed", self, "_close")
 	v.add_child(close)
+
+
+func _on_streamer(on: bool) -> void:
+	Settings.streamer = on
+	Settings.save_cfg()
 
 
 func _on_twitch(t: String) -> void:
@@ -196,7 +215,7 @@ func _open_keys() -> void:
 		keys_panel.queue_free()
 	keys_panel = PanelContainer.new()
 	keys_panel.pause_mode = Node.PAUSE_MODE_PROCESS
-	keys_panel.rect_position = Vector2(160, 40)
+	keys_panel.rect_position = Vector2(150, 14)
 	keys_panel.rect_min_size = Vector2(320, 250)
 	get_parent().add_child(keys_panel)
 	var v := VBoxContainer.new()
@@ -214,12 +233,12 @@ func _open_keys() -> void:
 		var b := Button.new()
 		b.rect_min_size = Vector2(120, 0)
 		b.add_font_override("font", font)
-		b.text = OS.get_scancode_string(int(Settings.keys[a]))
+		b.text = Settings.bind_name(int(Settings.keys[a]))
 		b.connect("pressed", self, "_wait_key", [a])
 		row.add_child(b)
 		_key_buttons[a] = b
 	var info := Label.new()
-	info.text = tr("Мышь: ЛКМ — взять, зажать — бросить, ПКМ — поставить. ESC — пауза.")
+	info.text = tr("Можно назначать клавиши и кнопки мыши. Геймпад: левый стик — ходить, правый — смотреть, RT — взять/бросить, LT/B — поставить, A — нажать, Start — пауза.")
 	info.autowrap = true
 	info.rect_min_size = Vector2(300, 0)
 	info.add_font_override("font", font)
@@ -245,13 +264,30 @@ func _wait_key(a: String) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if _wait_action == "" or not (event is InputEventKey) or not event.pressed:
+	if _wait_action == "" or not event.pressed:
 		return
-	if event.physical_scancode != KEY_ESCAPE:
-		Settings.keys[_wait_action] = event.physical_scancode
+	var code := 0
+	if event is InputEventKey:
+		if event.physical_scancode != KEY_ESCAPE:
+			code = event.physical_scancode
+	elif event is InputEventMouseButton:
+		if event.button_index in [BUTTON_WHEEL_UP, BUTTON_WHEEL_DOWN]:
+			return
+		code = -event.button_index
+	else:
+		return
+	if code != 0:
+		# эта кнопка уже занята другим действием — меняем их местами
+		var old: int = int(Settings.keys[_wait_action])
+		for a in Settings.keys:
+			if a != _wait_action and int(Settings.keys[a]) == code:
+				Settings.keys[a] = old
+				if _key_buttons.has(a):
+					_key_buttons[a].text = Settings.bind_name(old)
+		Settings.keys[_wait_action] = code
 		Settings.apply_keys()
 		Settings.save_cfg()
-	_key_buttons[_wait_action].text = OS.get_scancode_string(int(Settings.keys[_wait_action]))
+	_key_buttons[_wait_action].text = Settings.bind_name(int(Settings.keys[_wait_action]))
 	_wait_action = ""
 	get_tree().set_input_as_handled()
 
@@ -261,7 +297,7 @@ func _reset_keys() -> void:
 	Settings.apply_keys()
 	Settings.save_cfg()
 	for a in _key_buttons:
-		_key_buttons[a].text = OS.get_scancode_string(int(Settings.keys[a]))
+		_key_buttons[a].text = Settings.bind_name(int(Settings.keys[a]))
 
 
 func _close_keys() -> void:

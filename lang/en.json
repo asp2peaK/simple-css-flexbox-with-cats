@@ -626,5 +626,20 @@
  "  (огромный сундук: только вдвоём)": "  (huge chest: two people only)",
  "корова": "cow",
  "Пи?.. Мышка выходит только в одиночной карьере.": "Squeak?.. The mouse only comes out in solo career.",
- "Пи?.. Мышка прячется, пока пункт открыт. Позвони так, когда закроешь.": "Squeak?.. The mouse hides while the point is open. Ring like that when it's closed."
+ "Пи?.. Мышка прячется, пока пункт открыт. Позвони так, когда закроешь.": "Squeak?.. The mouse hides while the point is open. Ring like that when it's closed.",
+ "ЛКМ": "LMB",
+ "ПКМ": "RMB",
+ "Колесо": "Wheel",
+ "Мышь %d": "Mouse %d",
+ "левый стик": "left stick",
+ "правый стик": "right stick",
+ "Взять / зажать — швырнуть": "Grab / hold to throw",
+ "Поставить": "Place",
+ "Взять / поставить / нажать": "Grab / place / press",
+ "Магазин после смены": "Shop after the shift",
+ "мышь": "mouse",
+ "Можно назначать клавиши и кнопки мыши. Геймпад: левый стик — ходить, правый — смотреть, RT — взять/бросить, LT/B — поставить, A — нажать, Start — пауза.": "You can bind keys and mouse buttons. Gamepad: left stick walk, right stick look, RT grab/throw, LT/B place, A press, Start pause.",
+ "Папка с логами": "Logs folder",
+ "Режим стримера (скрыть ники и IP)": "Streamer mode (hide nicks and IP)",
+ "другу %d": "friend %d"
 }

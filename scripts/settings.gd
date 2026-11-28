@@ -11,12 +11,23 @@ var res_idx := 1
 var sens := 1.0
 var vsync := true
 const KEY_NAMES := {"move_forward": "Вперёд", "move_back": "Назад", "move_left": "Влево",
-	"move_right": "Вправо", "interact": "Взять / поставить", "restart": "Переиграть смену"}
+	"move_right": "Вправо", "grab": "Взять / зажать — швырнуть", "place": "Поставить",
+	"interact": "Взять / поставить / нажать", "restart": "Переиграть смену", "shop": "Магазин после смены"}
+# привязка: число > 0 — физическая клавиша, < 0 — кнопка мыши (-1 ЛКМ, -2 ПКМ, -3 колесо)
 const DEFAULT_KEYS := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A,
-	"move_right": KEY_D, "interact": KEY_E, "restart": KEY_R}
+	"move_right": KEY_D, "grab": -BUTTON_LEFT, "place": -BUTTON_RIGHT, "interact": KEY_E,
+	"restart": KEY_R, "shop": KEY_N}
+# геймпад (XInput-раскладка), не переназначается: кнопки и оси
+const PAD_BUTTONS := {"move_forward": [JOY_DPAD_UP], "move_back": [JOY_DPAD_DOWN],
+	"move_left": [JOY_DPAD_LEFT], "move_right": [JOY_DPAD_RIGHT], "grab": [JOY_R2, JOY_R],
+	"place": [JOY_L2, JOY_XBOX_B], "interact": [JOY_XBOX_A], "restart": [JOY_SELECT], "shop": [JOY_XBOX_Y]}
+const PAD_AXES := {"move_forward": [JOY_AXIS_1, -1.0], "move_back": [JOY_AXIS_1, 1.0],
+	"move_left": [JOY_AXIS_0, -1.0], "move_right": [JOY_AXIS_0, 1.0],
+	"grab": [JOY_ANALOG_R2, 1.0], "place": [JOY_ANALOG_L2, 1.0]}
 var keys := DEFAULT_KEYS.duplicate()
 var sharp := true  # чёткая картинка (рендер в размер окна) или пиксельная 640x360
 var lang := "ru"
+var streamer := false  # режим стримера: прятать ники чата/друзей и IP
 var twitch := ""  # канал Twitch для голосования чата
 var reopen_settings := false
 # внешний вид игрока (зеркало) и купленные вещи — общие для всех режимов
@@ -26,6 +37,10 @@ var owned := ["human", "postal", "beanie", "glasses"]  # после смены �
 
 func _ready() -> void:
 	pause_mode = Node.PAUSE_MODE_PROCESS
+	# шапка лога (user://logs/godot.log): по ней видно, на чём играл человек с ошибкой
+	print("=== Not My Parcel! %s | %s | %s | %s | %s ===" % [load("res://scripts/game.gd").VERSION,
+		OS.get_name(), OS.get_video_driver_name(OS.get_current_video_driver()),
+		VisualServer.get_video_adapter_name(), Time.get_datetime_string_from_system()])
 	_ensure_buses()
 	_load_translation()
 	load_cfg()
@@ -58,13 +73,49 @@ func apply_keys() -> void:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a)
 		InputMap.action_erase_events(a)
-		var ev := InputEventKey.new()
-		ev.physical_scancode = int(keys.get(a, DEFAULT_KEYS[a]))  # физические клавиши: работает на любой раскладке
-		InputMap.action_add_event(a, ev)
+		InputMap.action_set_deadzone(a, 0.3)
+		InputMap.action_add_event(a, bind_event(int(keys.get(a, DEFAULT_KEYS[a]))))
 		if arrows.has(a):
 			var ev2 := InputEventKey.new()
 			ev2.physical_scancode = arrows[a]
 			InputMap.action_add_event(a, ev2)
+		for btn in PAD_BUTTONS.get(a, []):
+			var jb := InputEventJoypadButton.new()
+			jb.button_index = btn
+			InputMap.action_add_event(a, jb)
+		if PAD_AXES.has(a):
+			var jm := InputEventJoypadMotion.new()
+			jm.axis = PAD_AXES[a][0]
+			jm.axis_value = PAD_AXES[a][1]
+			InputMap.action_add_event(a, jm)
+	# пауза и меню с геймпада
+	var st := InputEventJoypadButton.new()
+	st.button_index = JOY_START
+	if not InputMap.action_has_event("ui_cancel", st):
+		InputMap.action_add_event("ui_cancel", st)
+
+
+func bind_event(code: int) -> InputEvent:
+	if code < 0:
+		var mb := InputEventMouseButton.new()
+		mb.button_index = -code
+		return mb
+	var ev := InputEventKey.new()
+	ev.physical_scancode = code  # физические клавиши: работает на любой раскладке
+	return ev
+
+
+func bind_name(code: int) -> String:
+	if code < 0:
+		match -code:
+			BUTTON_LEFT:
+				return tr("ЛКМ")
+			BUTTON_RIGHT:
+				return tr("ПКМ")
+			BUTTON_MIDDLE:
+				return tr("Колесо")
+		return tr("Мышь %d") % -code
+	return OS.get_scancode_string(code)
 
 
 func _ensure_buses() -> void:
@@ -102,6 +153,7 @@ func save_cfg() -> void:
 	c.set_value("video", "sharp", sharp)
 	c.set_value("game", "lang", lang)
 	c.set_value("game", "twitch", twitch)
+	c.set_value("game", "streamer", streamer)
 	c.set_value("input", "sens", sens)
 	c.set_value("input", "keys", keys)
 	c.set_value("player", "look", look)
@@ -121,6 +173,7 @@ func load_cfg() -> void:
 	sharp = c.get_value("video", "sharp", sharp)
 	lang = c.get_value("game", "lang", lang)
 	twitch = str(c.get_value("game", "twitch", twitch))
+	streamer = bool(c.get_value("game", "streamer", streamer))
 	sens = c.get_value("input", "sens", sens)
 	var lk = c.get_value("player", "look", {})
 	if typeof(lk) == TYPE_DICTIONARY:
@@ -134,4 +187,9 @@ func load_cfg() -> void:
 	var k = c.get_value("input", "keys", {})
 	if typeof(k) == TYPE_DICTIONARY:
 		for a in k:
-			keys[a] = int(k[a])
+			if DEFAULT_KEYS.has(a):
+				keys[a] = int(k[a])
+
+
+func open_logs() -> void:
+	OS.shell_open(ProjectSettings.globalize_path("user://logs"))
