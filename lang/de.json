@@ -732,5 +732,9 @@
  "Сюда нельзя: красная метка. Найди место, где метка зелёная.": "Hier nicht: Die Markierung ist rot. Such eine Stelle, wo sie grün wird.",
  "Красить можно, когда пункт закрыт.": "Malen geht nur, wenn geschlossen ist.",
  "Краски для стеллажей": "Regalfarben",
- "Перекрашивай секции в свои цвета: клик по табличке, пока закрыто": "Färbe Fächer in deinen Farben: Klick aufs Schild, wenn geschlossen"
+ "Перекрашивай секции в свои цвета: клик по табличке, пока закрыто": "Färbe Fächer in deinen Farben: Klick aufs Schild, wenn geschlossen",
+ "Моды": "Mods",
+ "Моды выключены (--nomods)": "Mods sind deaktiviert (--nomods)",
+ "Модов пока нет. Положи мод в папку mods рядом с игрой или в папку ниже. Как их делать, написано в MODDING.md.": "Noch keine Mods. Lege einen Mod in den Ordner mods neben dem Spiel oder in den Ordner unten. Wie man Mods macht, steht in MODDING.md.",
+ "Открыть папку модов": "Mod-Ordner öffnen"
 }

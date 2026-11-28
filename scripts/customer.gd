@@ -11,6 +11,7 @@ var kind := ""
 var line := ""
 var patience := 40.0
 var max_patience := 40.0
+var pat_k := -1.0  # доля терпения для шкалы над головой (-1 — не показывать)
 var state := "walking_in"
 var door := Vector3.ZERO
 var slot := -1
@@ -255,12 +256,10 @@ func _process(delta: float) -> void:
 		return
 	if state == "at_counter":
 		var k := patience / max_patience
-		var n := int(ceil(k * 8.0))
-		var bar := ""
-		for i in 8:
-			bar += "■" if i < n else "□"
-		bubble_text = "%s\n%s" % [line, bar]
+		pat_k = k  # шкалу терпения (рамка + рожица) рисует HUD под репликой
+		bubble_text = line
 		bubble_color = Color(1, 1, 1).linear_interpolate(Color(1, 0.3, 0.2), 1.0 - k)
 	elif state == "walking_in":
+		pat_k = -1.0
 		bubble_text = "..."
 		bubble_color = Color(0.8, 0.8, 0.8)

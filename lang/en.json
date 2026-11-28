@@ -732,5 +732,9 @@
  "Сюда нельзя: красная метка. Найди место, где метка зелёная.": "Can't put it here: the mark is red. Find a spot where it turns green.",
  "Красить можно, когда пункт закрыт.": "You can paint only while the point is closed.",
  "Краски для стеллажей": "Shelf paints",
- "Перекрашивай секции в свои цвета: клик по табличке, пока закрыто": "Repaint sections in your own colors: click the sign while closed"
+ "Перекрашивай секции в свои цвета: клик по табличке, пока закрыто": "Repaint sections in your own colors: click the sign while closed",
+ "Моды": "Mods",
+ "Моды выключены (--nomods)": "Mods are disabled (--nomods)",
+ "Модов пока нет. Положи мод в папку mods рядом с игрой или в папку ниже. Как их делать, написано в MODDING.md.": "No mods yet. Put a mod into the mods folder next to the game or into the folder below. MODDING.md explains how to make them.",
+ "Открыть папку модов": "Open mods folder"
 }

@@ -3,7 +3,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 ROOT=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 S=os.environ.get('MEDIA','/tmp/gs/media')  # клипы лежат в $MEDIA/clips/<сцена>_<язык>
 lang=sys.argv[1]; out=sys.argv[2]
-FONT=ROOT+'/fonts/DejaVuSans-Bold.ttf'
+FONT=ROOT+'/tools/steam_media/RussoOne-Regular.ttf'  # Russo One (OFL): кириллица и латиница
 T={'en':[('card','You run a parcel pickup point...'),('clip','counter',6),
  ('card','...for witches, orcs and skeletons'),('clip','warehouse',4),
  ('card','Spot the scammers'),('clip','scam',4),

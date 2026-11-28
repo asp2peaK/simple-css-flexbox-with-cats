@@ -28,8 +28,8 @@ var keys := DEFAULT_KEYS.duplicate()
 var sharp := true  # чёткая картинка (рендер в размер окна) или пиксельная 640x360
 var lang := "en"
 var lang_saved := false  # язык уже выбран (иначе берём из Steam или системы)
-const LANGS := ["ru", "en", "de", "es"]
-const LANG_NAMES := ["Русский", "English", "Deutsch", "Español"]
+var LANGS := ["ru", "en", "de", "es"]  # моды могут добавить свои (Mods.extra_langs)
+var LANG_NAMES := ["Русский", "English", "Deutsch", "Español"]
 var streamer := false  # режим стримера: прятать ники чата/друзей и IP
 var twitch := ""  # канал Twitch для голосования чата
 var reopen_settings := false
@@ -58,15 +58,22 @@ func _ready() -> void:
 
 # переводы: ключ — русская строка, значение — перевод (res://lang/<код>.json)
 func _load_translation() -> void:
+	for code in Mods.extra_langs:
+		if not code in LANGS:
+			LANGS.append(code)
+			LANG_NAMES.append(Mods.extra_langs[code])
 	for code in LANGS:
-		if code == "ru":
-			continue
+		var d = {}
 		var f := File.new()
-		if f.open("res://lang/%s.json" % code, File.READ) != OK:
-			continue
-		var d = parse_json(f.get_as_text())
-		f.close()
+		if code != "ru" and f.open("res://lang/%s.json" % code, File.READ) == OK:
+			d = parse_json(f.get_as_text())
+			f.close()
 		if typeof(d) != TYPE_DICTIONARY:
+			d = {}
+		var md: Dictionary = Mods.translations(code)
+		for k in md:
+			d[k] = md[k]
+		if d.empty():
 			continue
 		var t := Translation.new()
 		t.locale = code

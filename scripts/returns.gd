@@ -93,15 +93,20 @@ func _decal(p, dmg: String) -> void:
 	if not ResourceLoader.exists(path):
 		return
 	var t: Texture = load(path)
-	for face in [[Vector3(0, p.size.y / 2.0 + 0.003, 0), Vector3(-90, 0, 0)],
-			[Vector3(0, 0, p.size.z / 2.0 + 0.003), Vector3(0, 0, 0)],
-			[Vector3(0, 0, -p.size.z / 2.0 - 0.003), Vector3(0, 180, 0)]]:
+	var sz: Vector3 = p.size
+	var tw: float = t.get_width()
+	var th: float = t.get_height()
+	# грани: [сдвиг, поворот, ширина и высота грани]; рисунок целиком влезает в грань (60 %), чуть повёрнут
+	for face in [[Vector3(0, sz.y / 2.0 + 0.003, 0), Vector3(-90, 0, 0), Vector2(sz.x, sz.z)],
+			[Vector3(0, 0, sz.z / 2.0 + 0.003), Vector3(0, 0, 0), Vector2(sz.x, sz.y)],
+			[Vector3(0, 0, -sz.z / 2.0 - 0.003), Vector3(0, 180, 0), Vector2(sz.x, sz.y)]]:
 		var s := Sprite3D.new()
 		s.texture = t
-		s.pixel_size = p.size.x * 0.7 / t.get_width()
+		s.pixel_size = 0.6 * min(face[2].x / tw, face[2].y / th)
 		s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 		s.translation = face[0]
 		s.rotation_degrees = face[1]
+		s.rotate_object_local(Vector3.FORWARD, deg2rad(rand_range(-25.0, 25.0)))
 		p.add_child(s)
 	p.set_meta("dmg", dmg)
 

@@ -118,6 +118,7 @@ func open() -> void:
 	panel.pause_mode = Node.PAUSE_MODE_PROCESS
 	panel.rect_position = Vector2(40, 4)
 	panel.rect_min_size = Vector2(420, 300)
+	panel.set_meta("keep", true)  # редактор видно и в трейлере
 	main.pause_panel.get_parent().add_child(panel)
 	var font: Font = main.font_big.duplicate()
 	if font is DynamicFont:

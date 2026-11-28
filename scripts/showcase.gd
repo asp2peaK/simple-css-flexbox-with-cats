@@ -35,6 +35,10 @@ func run(main, scene: String) -> void:
 	m.tut_step = -1
 	Ach._busy = true  # без всплывашек «Достижение получено» в кадре
 	VisualServer.connect("frame_post_draw", self, "_post_draw")
+	# интерфейс прячем прямо перед отрисовкой: HUD обновляется последним в кадре и снова его показывает
+	VisualServer.connect("frame_pre_draw", self, "_pre_draw")
+	if not hud:
+		m.hide_nicks = true
 	call(scene)
 
 
@@ -89,11 +93,17 @@ func _post_draw() -> void:
 		get_tree().quit()
 
 
+func _pre_draw() -> void:
+	if m and not hud:
+		_hide_hud()
+
+
+# в трейлере — только сама игра и реплики клиентов: без подсказок, баннеров, монет и ников
 func _hide_hud() -> void:
 	for ch in m.get_children():
 		if ch is CanvasLayer and ch.get_child_count() > 0:
 			for w in ch.get_child(0).get_children():
-				if w is Label and not w in m.hud_bubbles and not w.has_meta("keep"):
+				if w is CanvasItem and not w in m.hud_bubbles and not w in m.hud_meters and not w.has_meta("keep"):
 					w.visible = false
 			return
 

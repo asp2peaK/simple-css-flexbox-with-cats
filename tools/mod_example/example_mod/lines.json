@@ -1,0 +1,4 @@
+{
+ "orc": {"*": ["ORC WANT %s! NOW!"], "ru": ["ОРК ПРИШЁЛ ЗА %s. ОРК ЖДЁТ."]},
+ "ghost": {"en": ["Boo... parcel %s, please..."], "de": ["Buh... Paket %s, bitte..."]}
+}

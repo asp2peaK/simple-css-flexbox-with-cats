@@ -72,6 +72,7 @@ func _show(d: int) -> void:
 	panel.pause_mode = Node.PAUSE_MODE_PROCESS
 	panel.anchor_right = 1
 	panel.anchor_bottom = 1
+	panel.set_meta("keep", true)  # письмо видно и в трейлере
 	root.add_child(panel)
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.55)

@@ -139,6 +139,13 @@ func _ready() -> void:
 	nb.rect_position = Vector2(8, 330)
 	nb.connect("pressed", self, "_news")
 	add_child(nb)
+	var mb := Button.new()
+	mb.text = tr("Моды") + (" (%d)" % Mods.mods.size() if Mods.mods.size() > 0 else "")
+	mb.theme = box.theme
+	mb.add_font_override("font", font_big)
+	mb.rect_position = Vector2(8, 304)
+	mb.connect("pressed", self, "_mods")
+	add_child(mb)
 
 	var help := Label.new()
 	help.add_font_override("font", font_big)
@@ -198,6 +205,9 @@ func _ready() -> void:
 		imgn.flip_y()
 		imgn.save_png(OS.get_environment("SHOT_DIR") + "/news_%s.png" % Settings.lang)
 		get_tree().quit()
+	if "--modspanel" in OS.get_cmdline_args():
+		_mods()
+		print("MODLINES orc/ru: ", Mods.lines_for("orc", "ru"), " pl: ", tr("Новая игра"), " langs: ", Settings.LANGS)
 	if "--menushot" in OS.get_cmdline_args():
 		yield(get_tree().create_timer(1.0), "timeout")
 		var img := get_viewport().get_texture().get_data()
@@ -231,6 +241,75 @@ func _news() -> void:
 	news_panel.get_child(0).add_child(back)
 	add_child(news_panel)
 	back.call_deferred("grab_focus")
+
+
+var mods_panel: Control
+
+
+func _mods() -> void:
+	if mods_panel and is_instance_valid(mods_panel):
+		mods_panel.queue_free()
+	var p := PanelContainer.new()
+	p.theme = load("res://scripts/ui_theme.gd").make()
+	p.rect_position = Vector2(70, 30)
+	p.rect_min_size = Vector2(500, 0)
+	var v := VBoxContainer.new()
+	p.add_child(v)
+	var t := Label.new()
+	t.text = tr("Моды")
+	t.align = Label.ALIGN_CENTER
+	t.add_font_override("font", font_big)
+	load("res://scripts/ui_theme.gd").banner(t)
+	v.add_child(t)
+	var plain: Font = Ach._plain(font_big)
+	var sc := ScrollContainer.new()
+	sc.rect_min_size = Vector2(490, 170)
+	sc.scroll_horizontal_enabled = false
+	v.add_child(sc)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(list)
+	var lines := []
+	if Mods.disabled:
+		lines.append(tr("Моды выключены (--nomods)"))
+	elif Mods.mods.empty():
+		lines.append(tr("Модов пока нет. Положи мод в папку mods рядом с игрой или в папку ниже. Как их делать, написано в MODDING.md."))
+	for m in Mods.mods:
+		var s: String = "• " + m.name
+		if m.version != "":
+			s += " v" + m.version
+		if m.author != "":
+			s += "  (" + m.author + ")"
+		if m.description != "":
+			s += "\n   " + m.description
+		lines.append(s)
+	for e in Mods.errors:
+		lines.append("! " + e)
+	for s in lines:
+		var l := Label.new()
+		l.text = s
+		l.autowrap = true
+		l.rect_min_size = Vector2(470, 0)
+		l.add_font_override("font", plain)
+		l.add_color_override("font_color", Color(0.75, 0.15, 0.1) if s.begins_with("! ") else Color(0.3, 0.18, 0.08))
+		list.add_child(l)
+	var ob := Button.new()
+	ob.text = tr("Открыть папку модов")
+	ob.add_font_override("font", font_big)
+	ob.connect("pressed", self, "_open_mods")
+	v.add_child(ob)
+	var back := Button.new()
+	back.text = tr("Назад")
+	back.add_font_override("font", font_big)
+	back.connect("pressed", p, "queue_free")
+	v.add_child(back)
+	add_child(p)
+	mods_panel = p
+	back.call_deferred("grab_focus")
+
+
+func _open_mods() -> void:
+	OS.shell_open(Mods.user_dir())
 
 
 func _achievements() -> void:

@@ -1,0 +1,8 @@
+{
+ "name": "Example mod",
+ "author": "you",
+ "version": "1.0",
+ "description": "Adds a few customer lines and a Polish language stub. Delete \"disabled\" to turn it on.",
+ "disabled": true,
+ "languages": {"pl": "Polski (mod)"}
+}

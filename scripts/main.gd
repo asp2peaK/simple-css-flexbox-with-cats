@@ -95,6 +95,8 @@ var hud_hint: Label
 var hud_order: Label
 var hud_center: Label
 var hud_bubbles := []
+var hide_nicks := false  # съёмка трейлера: без ников над игроками
+var hud_meters := []  # шкалы терпения под репликами (рамка, заливка, рожица)
 var hud_event: Label
 var hud_tut: Label
 var hud_help: Label
@@ -1283,7 +1285,11 @@ func _spawn_customer() -> void:
 		c.fake = ""
 		c.receipt_code = p.code
 		c.grabber = false
-	var fmt: String = tr(pick(KINDS[kind][1]))
+	var opts := []
+	for l in KINDS[kind][1]:
+		opts.append(tr(l))
+	opts += Mods.lines_for(kind, Settings.lang)
+	var fmt: String = pick(opts)
 	var line: String = fmt % disp(p.code)
 	if is_boss:
 		line = tr("Я — Тёмный Почтмейстер. Мне %s. И это только начало.") % disp(p.code)
@@ -2553,6 +2559,7 @@ func _build_hud() -> void:
 		sb.content_margin_bottom = 1
 		bl.add_stylebox_override("normal", sb)
 		hud_bubbles.append(bl)
+		hud_meters.append(_patience_meter(root))
 
 	hud_event = _label(root, font_big, Vector2(400, 6))
 	hud_event.rect_size = Vector2(232, 20)
@@ -2691,8 +2698,9 @@ func _process(_delta: float) -> void:
 	for n in [golem, helper]:
 		if n and n.bubble_text != "":
 			talkers.append(n)
-	for av in avatars.values():
-		talkers.append(av)
+	if not hide_nicks:
+		for av in avatars.values():
+			talkers.append(av)
 	for c in talkers:
 		if i >= hud_bubbles.size():
 			break
@@ -2706,10 +2714,71 @@ func _process(_delta: float) -> void:
 		bl.text = c.bubble_text
 		bl.add_color_override("font_color", c.bubble_color)
 		bl.rect_size = Vector2(150, 0)
-		bl.rect_position = player.cam.unproject_position(head) - Vector2(75, bl.rect_size.y)
+		var sp: Vector2 = player.cam.unproject_position(head)
+		var pk: float = c.get("pat_k") if c.get("pat_k") != null else -1.0
+		var mt: Control = hud_meters[i]
+		mt.visible = pk >= 0.0
+		if mt.visible:
+			_set_meter(mt, pk)
+			mt.rect_position = (sp - Vector2(mt.rect_size.x / 2.0, mt.rect_size.y)).round()
+			sp.y -= mt.rect_size.y + 1
+		bl.rect_position = (sp - Vector2(75, bl.rect_size.y)).round()
 		i += 1
 	for j in range(i, hud_bubbles.size()):
 		hud_bubbles[j].visible = false
+		hud_meters[j].visible = false
+
+
+# шкала терпения клиента: деревянная рамка (лист 69), заливка цветом настроения и рожица слева
+const PAT_COLORS := [Color(0.2, 0.85, 0.15), Color(1.0, 0.75, 0.05), Color(1.0, 0.45, 0.05), Color(0.95, 0.1, 0.1)]
+
+
+func _patience_meter(root: Control) -> Control:
+	var m := Control.new()
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.rect_size = Vector2(90, 16)
+	var has_art := ResourceLoader.exists("res://assets/ui/pat_frame.png")
+	var fill := ColorRect.new()
+	fill.name = "fill"
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	m.add_child(fill)
+	if has_art:
+		var fr := TextureRect.new()
+		fr.texture = load("res://assets/ui/pat_frame.png")
+		fr.rect_position = Vector2(18, 3)
+		fr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		m.add_child(fr)
+		m.move_child(fill, m.get_child_count() - 1)  # заливка поверх тёмного паза рамки
+		var face := TextureRect.new()
+		face.name = "face"
+		face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		m.add_child(face)
+	else:
+		var bg := ColorRect.new()
+		bg.color = Color(0, 0, 0, 0.6)
+		bg.rect_position = Vector2(24, 6)
+		bg.rect_size = Vector2(60, 6)
+		m.add_child(bg)
+		m.move_child(bg, 0)
+	m.visible = false
+	root.add_child(m)
+	return m
+
+
+func _set_meter(m: Control, k: float) -> void:
+	k = clamp(k, 0.0, 1.0)
+	var mood := 0 if k > 0.7 else (1 if k > 0.45 else (2 if k > 0.2 else 3))
+	var fill: ColorRect = m.get_node("fill")
+	fill.color = PAT_COLORS[mood]
+	# пустой паз рамки: x 7..64, y 3..7 в картинке рамки, рамка сдвинута на (18, 3)
+	fill.rect_position = Vector2(18 + 7, 3 + 3)
+	fill.rect_size = Vector2(round(58.0 * k), 5)
+	if m.has_node("face"):
+		var face: TextureRect = m.get_node("face")
+		var p := "res://assets/ui/pat_face_%d.png" % mood
+		if face.texture == null or face.texture.resource_path != p:
+			face.texture = load(p)
+		face.rect_position = Vector2(16 - face.texture.get_width(), 0)
 
 
 func _refresh_hud() -> void:

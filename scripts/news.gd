@@ -3,6 +3,10 @@ extends Reference
 # Новая версия — добавь запись в начало списка (не больше 5 штук показываем).
 
 const NEWS := [
+	["0.15.1", "Моды и полировка",
+		"- Поддержка модов: папка mods рядом с игрой, кнопка «Моды» в меню. Можно добавить язык, фразы клиентов или заменить любую картинку и звук.\n- Новая шкала терпения над клиентами с рожицами.\n- Значок улучшения «Краски».\n- Шлем орка и наушники теперь сидят как надо.\n- Аккуратные картинки на коробках возвратов.",
+		"Mods and polish",
+		"- Mod support: a mods folder next to the game and a Mods button in the menu. Add a language, customer lines, or replace any picture and sound.\n- New patience meter with mood faces above customers.\n- Shelf paints upgrade icon.\n- The orc's helmet and the headphones now fit properly.\n- Neater pictures on returned boxes."],
 	["0.15", "Языки и свой склад",
 		"- Немецкий и испанский языки. Язык сам берётся из Steam или системы.\n- Стеллажи можно передвигать, пока пункт закрыт (с коробками!).\n- Декор переставляется только туда, где он к месту: цветы на пол, мелочь на стол.\n- Улучшение «Краски для стеллажей»: перекрашивай секции в свои цвета.\n- Зеркало повесили на уровень глаз и починили отражение.\n- Кот теперь лежит прямо в лежанке.\n- Письма дракона написаны от руки.",
 		"Languages and your own storeroom",
