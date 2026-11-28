@@ -87,7 +87,7 @@ func set_fx(down: String, p_curse: String) -> void:
 	if doll:
 		doll.set_state(down, p_curse == "bighead")
 	if down != "" and stars == null:
-		stars = load("res://scripts/fun.gd").make_stars(base_y * 1.9 if doll == null else 0.75)
+		stars = load("res://scripts/fun.gd").make_stars(base_y * 1.9 if doll == null else 0.5)
 		add_child(stars)
 	elif down == "" and stars:
 		stars.queue_free()
@@ -104,4 +104,6 @@ func _process(delta: float) -> void:
 				_step_t = 0.38
 				Sfx.play_at("oink", global_transform.origin, 0.15, -4.0)
 		_prev = translation
+		if stars:
+			stars.head_side = 1.0 if doll._flip else -1.0
 	rotation.y = lerp_angle(rotation.y, _rot, min(1.0, 12.0 * delta))

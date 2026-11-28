@@ -2,6 +2,7 @@ extends Spatial
 # Звёздочки над головой оглушённого: 3 штуки кружат и мигают (кадры assets/fx/star_N.png, если нарисованы).
 
 var _t := 0.0
+var head_side := 0.0  # лежит: голова слева (-1) или справа (+1) на экране
 var stars := []
 var frames := []
 
@@ -37,7 +38,7 @@ func _ready() -> void:
 	for k in 3:
 		var s := Sprite3D.new()
 		s.texture = frames[0]
-		s.pixel_size = 0.018
+		s.pixel_size = 0.009
 		s.billboard = SpatialMaterial.BILLBOARD_ENABLED
 		s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 		s.render_priority = 5
@@ -47,8 +48,15 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	# центр кружка — над головой: у лежащего голова сбоку, сдвигаем вдоль экрана
+	var c := Vector3.ZERO
+	var cam := get_viewport().get_camera()
+	if cam and head_side != 0.0:
+		var r: Vector3 = cam.global_transform.basis.x
+		r.y = 0
+		c = global_transform.basis.xform_inv(r.normalized()) * 0.65 * head_side
 	for k in stars.size():
 		var a: float = _t * 4.0 + k * TAU / 3.0
 		var s: Sprite3D = stars[k]
-		s.translation = Vector3(cos(a) * 0.32, sin(_t * 6.0 + k) * 0.05, sin(a) * 0.32)
+		s.translation = c + Vector3(cos(a) * 0.17, sin(_t * 6.0 + k) * 0.03, sin(a) * 0.17)
 		s.texture = frames[int(_t * 8.0 + k) % frames.size()]

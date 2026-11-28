@@ -46,7 +46,7 @@ func host() -> void:
 	_place(Vector3(0, 0.05, -1.0), 0.0, -0.05)
 	var box = null
 	for p in main.parcels:
-		if is_instance_valid(p) and not p.duo and p.box_type == "normal" and not p.delivered:
+		if is_instance_valid(p) and not p.duo and p.box_type in ["normal", "gift", "fragile", "heavy"] and not p.delivered and p.mode == RigidBody.MODE_RIGID:
 			box = p
 			break
 	main.player.grab(box)
@@ -152,4 +152,103 @@ func solo() -> void:
 	print("vote done, money=", main.money, " curse=", main.player.curse)
 	yield(_wait(1.0), "timeout")
 	_shot("s4_vote_result")
+	get_tree().quit()
+
+
+# ---- показ коровы на двоих: menu --nethost --funtest=cowhost --cowfirst + menu --netjoin=... --funtest=cowclient
+var _t0 := 0
+var side_cam: Camera
+
+
+func _at(t: float):
+	while (OS.get_ticks_msec() - _t0) / 1000.0 < t:
+		yield(get_tree(), "idle_frame")
+	return true
+
+
+func _side_shot(n: String, target: Vector3) -> void:
+	if side_cam == null:
+		side_cam = Camera.new()
+		side_cam.fov = 60
+		main.add_child(side_cam)
+	side_cam.global_transform.origin = target + Vector3(2.6, 2.0, 3.0)
+	side_cam.look_at(target, Vector3.UP)
+	side_cam.current = true
+	yield(get_tree(), "idle_frame")
+	yield(get_tree(), "idle_frame")
+	_shot(n)
+	main.player.cam.current = true
+
+
+func _walk(from: Vector3, to: Vector3, t1: float, t2: float) -> void:
+	while true:
+		var t: float = (OS.get_ticks_msec() - _t0) / 1000.0
+		var k: float = clamp((t - t1) / (t2 - t1), 0.0, 1.0)
+		main.player.global_transform.origin = from.linear_interpolate(to, k)
+		if k >= 1.0:
+			return
+		yield(get_tree().create_timer(0.03), "timeout")
+
+
+func cowhost() -> void:
+	_t0 = OS.get_ticks_msec()
+	var f = main.fun
+	var cow = _duo_parcel()
+	var cp: Vector3 = cow.global_transform.origin
+	print("COW at ", cp, " ", cow.box_type)
+	yield(_at(4.0), "completed")
+	var start := Vector3(cp.x - 0.55, 0.05, cp.z + 1.4)
+	_place(start, 0.0, -0.45)
+	yield(_at(4.6), "completed")
+	_shot("c1_look")
+	f.duo_grab(cow)
+	yield(_at(6.0), "completed")
+	_shot("c2_one")
+	_side_shot("c2_one_side", cp)
+	yield(_at(8.5), "completed")
+	print("lifted=", main.player.duo_lifted, " holders=", f.duo.get(cow.code, []))
+	_shot("c3_lift")
+	_side_shot("c3_lift_side", cow.global_transform.origin)
+	main.player.rotation.y = PI
+	main.player.cam.rotation.x = -0.25
+	var end := Vector3(0.55, 0.05, -1.4)
+	_walk(start, end, 9.0, 15.0)
+	yield(_at(12.0), "completed")
+	_shot("c4_walk")
+	_side_shot("c4_walk_side", cow.global_transform.origin)
+	yield(_at(15.5), "completed")
+	_shot("c5_counter")
+	_side_shot("c5_counter_side", cow.global_transform.origin)
+	yield(_at(16.0), "completed")
+	f.duo_release_local()
+	yield(_at(16.6), "completed")
+	_side_shot("c6_drop_side", Vector3(0, 1.0, 0))
+	yield(_at(19.0), "completed")
+	print("served=", main.served, " money=", main.money, " cow delivered=", not is_instance_valid(cow) or cow.delivered)
+	_side_shot("c7_after_side", Vector3(0, 1.0, 0))
+	yield(_at(21.0), "completed")
+	get_tree().quit()
+
+
+func cowclient() -> void:
+	_t0 = OS.get_ticks_msec()
+	var f = main.fun
+	var cow = _duo_parcel()
+	var cp: Vector3 = cow.global_transform.origin
+	yield(_at(4.0), "completed")
+	var start := Vector3(cp.x + 0.55, 0.05, cp.z + 1.4)
+	_place(start, 0.0, -0.45)
+	yield(_at(7.0), "completed")
+	f.duo_grab(cow)
+	yield(_at(8.6), "completed")
+	_shot("c3_lift_client")
+	main.player.rotation.y = PI
+	main.player.cam.rotation.x = -0.25
+	var end := Vector3(-0.55, 0.05, -1.4)
+	_walk(start, end, 9.0, 15.0)
+	yield(_at(12.1), "completed")
+	_shot("c4_walk_client")
+	yield(_at(16.0), "completed")
+	f.duo_release_local()
+	yield(_at(18.0), "completed")
 	get_tree().quit()

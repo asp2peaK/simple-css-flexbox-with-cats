@@ -953,7 +953,7 @@ func _spawn_parcels() -> void:
 		# в коопе ноши на двоих — почти всегда в начале списка
 		var duo_first := []
 		for i in allowed.duplicate():
-			if (BOX_TYPES[i] == "chest" or i == COW_IDX) and randf() < 0.7:
+			if i == COW_IDX or (BOX_TYPES[i] == "chest" and randf() < 0.7):
 				allowed.erase(i)
 				duo_first.append(i)
 		allowed = duo_first + allowed
@@ -982,7 +982,7 @@ func _spawn_parcels() -> void:
 			parcels.append(p)
 		elif p.duo and n < pre:
 			# ноша на двоих стоит на полу склада, на полку не влезает
-			p.translation = [Vector3(-1.6, 0.5, -5.6), Vector3(1.6, 0.5, -5.6), Vector3(0.0, 0.5, -6.6)][duo_k % 3]
+			p.translation = [Vector3(1.8, 0.5, -2.7), Vector3(-1.8, 0.5, -2.7), Vector3(0.0, 0.5, -5.75)][duo_k % 3]
 			p.home = p.translation
 			duo_k += 1
 			add_child(p)
@@ -1111,6 +1111,11 @@ func _spawn_customer() -> void:
 	if maga_now:
 		kind = "maga"
 	var p = pick(avail)
+	# кооп: ношу на двоих заказывают пораньше (иначе может не дойти очередь)
+	for q in avail:
+		if q.duo and (randf() < 0.45 or ("--cowfirst" in OS.get_cmdline_args() and q.box_type == "cow")):
+			p = q
+			break
 	if kind == "giant":
 		# великан любит холодное
 		for q in avail:
@@ -1162,6 +1167,8 @@ func _spawn_customer() -> void:
 	if Game.decor.has("plant"):
 		pat *= 1.05
 	var boss_art := is_boss and ResourceLoader.exists("res://assets/chars/boss_idle.png")
+	if p.duo:
+		pat *= 1.8  # вдвоём тащить долго: клиент готов подождать
 	c.setup(kind, _char_frames("boss" if boss_art else kind), p.code, line, pat)
 	if is_boss:
 		boss = c

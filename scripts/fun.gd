@@ -14,6 +14,7 @@ const CURSE_TIME := 14.0
 const CURSE_CHANCE := 0.4
 const STUN_TIME := 3.2
 const DUO_TYPES := ["chest", "cow"]
+const COUNTER_TOP := 1.0
 const VOTES := {"overload": "Перегруз портала", "curse_all": "Проклятие всем", "blackout": "Вырубить свет",
 	"rush": "Наплыв клиентов", "tips": "Чаевые от чата +25", "bighead": "Большие головы"}
 const VOTE_EVERY := 70.0
@@ -300,6 +301,7 @@ func duo_release_local() -> void:
 	if pl.duo == null:
 		return
 	var code: String = pl.duo.code
+	_unexcept_later(pl.duo)
 	pl.duo = null
 	pl.duo_lifted = false
 	if Net.is_host or not Net.active:
@@ -349,6 +351,10 @@ func duo_release(id: int, code: String) -> void:
 
 
 func _duo_drop(p) -> void:
+	# отпустили над стойкой — ставим на стойку (поднимаем на её высоту)
+	var o: Vector3 = p.global_transform.origin
+	if p.mode != RigidBody.MODE_RIGID and abs(o.z) < 0.6 and abs(o.x) < 6.5:
+		p.global_transform.origin = Vector3(o.x, COUNTER_TOP + p.size.y / 2.0 + 0.03, clamp(o.z, -0.2, 0.2))
 	if p.mode != RigidBody.MODE_RIGID:
 		p.held = false
 		p.mode = RigidBody.MODE_RIGID
@@ -377,12 +383,15 @@ remote func net_duo_state(code: String, lifted: bool) -> void:
 		return
 	if pl.duo != p:
 		Sfx.play("pickup", 0.1, -2.0)
+		pl.add_collision_exception_with(p)
 	pl.duo = p
 	pl.duo_lifted = lifted
 
 
 remote func net_duo_drop() -> void:
 	var pl = player()
+	if pl.duo and is_instance_valid(pl.duo):
+		pl.remove_collision_exception_with(pl.duo)
 	pl.duo = null
 	pl.duo_lifted = false
 	main._flash(tr("Не удержали! Идите рядом."), 1.5)
@@ -393,6 +402,18 @@ func _holder_point(id: int) -> Vector3:
 		return player().hold_point.global_transform.origin
 	var av = main.avatars.get(id)
 	return av.hold_point() if av else Vector3.ZERO
+
+
+# куда держатель тянет ношу: на 1.3 м перед собой (у хоста и гостя по-разному берём направление)
+func _carry_point(id: int) -> Vector3:
+	var pos := _holder_body(id)
+	var yaw := 0.0
+	if id == Net.my_id():
+		yaw = player().rotation.y
+	else:
+		var av = main.avatars.get(id)
+		yaw = av._rot if av else 0.0
+	return pos + Vector3(-sin(yaw), 0, -cos(yaw)) * 1.3
 
 
 func _holder_body(id: int) -> Vector3:
@@ -412,8 +433,8 @@ func _update_duo(delta: float) -> void:
 				_tell_drop(id)
 			continue
 		if _lift_ready(hs):
-			var a := _holder_point(hs[0])
-			var b := a if hs.size() < 2 else _holder_point(hs[1])
+			var a := _carry_point(hs[0])
+			var b := a if hs.size() < 2 else _carry_point(hs[1])
 			if hs.size() >= 2 and _holder_body(hs[0]).distance_to(_holder_body(hs[1])) > 3.5:
 				# разошлись слишком далеко: сундук падает
 				duo.erase(code)
@@ -422,7 +443,7 @@ func _update_duo(delta: float) -> void:
 					_tell_drop(id)
 				continue
 			var mid := (a + b) / 2.0
-			mid.y = max(0.75, min(a.y, b.y) - 0.15)
+			mid.y = 0.55 + p.size.y / 2.0  # несут на руках низко, чтобы видеть дорогу
 			var basis: Basis = p.global_transform.basis
 			if hs.size() >= 2 and Vector2(b.x - a.x, b.z - a.z).length() > 0.2:
 				basis = Basis(Vector3.UP, atan2(b.x - a.x, b.z - a.z) + PI / 2.0)
@@ -633,3 +654,9 @@ func _moo_face(p) -> void:
 	yield(get_tree().create_timer(1.0), "timeout")
 	if is_instance_valid(cs):
 		cs.texture = load("res://assets/props/cow_crate.png")
+
+
+func _unexcept_later(p) -> void:
+	yield(get_tree().create_timer(0.6), "timeout")
+	if is_instance_valid(p) and is_instance_valid(player()):
+		player().remove_collision_exception_with(p)
