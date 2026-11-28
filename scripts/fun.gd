@@ -233,7 +233,7 @@ func knock() -> void:
 	if pl.duo:
 		duo_release_local()
 	pl.drop_all()
-	pl.stun_t = STUN_TIME
+	pl.stun_t = STUN_TIME * (0.5 if Game.lvl("coffee") > 0 else 1.0)
 	pl.down_dir = "back" if randf() < 0.5 else "front"
 	Sfx.play("bonk_player", 0.1, 0.0)
 	Sfx.play("dizzy", 0.05, -2.0)
@@ -510,7 +510,7 @@ remote func net_overload(extra: Array) -> void:
 
 
 func belt_speed() -> float:
-	return 2.6 if belt_boost > 0.0 else 0.9
+	return 2.6 if belt_boost > 0.0 else (1.8 if Game.lvl("belt") > 0 else 0.9)
 
 
 # ================================================================ Twitch: голосование чата

@@ -70,12 +70,13 @@ func pet() -> void:
 	else:
 		_set_state(["purr", "purr", "belly", "stretch"][randi() % 4] if pets > 1 else "purr", 4.0)
 		Sfx.play_at("purr", spr.global_transform.origin, 0.1, -3.0)
+	var bed := Game.lvl("catbed") > 0
 	if calm_cd <= 0.0 and pets >= 2:
-		calm_cd = CALM_CD
+		calm_cd = CALM_CD * (0.6 if bed else 1.0)
 		var n := 0
 		for c in main.customers:
 			if is_instance_valid(c) and c.state == "at_counter":
-				c.patience = min(c.max_patience, c.patience + c.max_patience * CALM_ADD)
+				c.patience = min(c.max_patience, c.patience + c.max_patience * CALM_ADD * (2.0 if bed else 1.0))
 				n += 1
 		if n > 0:
 			main._flash(tr("Кот мурчит. Клиенты чуть подобрели (+терпение)."), 2.0)

@@ -678,5 +678,16 @@
  "Правильно! Испорченное не принимаем. +6 монет": "Right! We don't take damaged goods. +6 coins",
  "Да она такая и была!..": "It was like that already!..",
  "ПРИНЯТО": "ACCEPTED",
- "ОТКАЗ": "REJECTED"
+ "ОТКАЗ": "REJECTED",
+ "Быстрая лента": "Fast belt",
+ "Посылки с портала едут вдвое быстрее": "Portal parcels ride twice as fast",
+ "Кофемашина": "Coffee machine",
+ "Оглушение вдвое короче + чашка за смену: 15 с бега": "Half the stun time + one cup per shift: 15 s of running",
+ "Камера наблюдения": "Security camera",
+ "Воры и мимики подсвечены красным": "Thieves and mimics glow red",
+ "Лежанка для кота": "Cat bed",
+ "Кот успокаивает клиентов сильнее и чаще": "The cat calms customers more and more often",
+ "[ЛКМ/E] Кофемашина: чашка кофе (15 с бега, раз за смену)": "[LMB/E] Coffee machine: a cup of coffee (15 s of running, once per shift)",
+ "Кофе на сегодня всё. Завтра ещё.": "No more coffee today. More tomorrow.",
+ "Кофе! 15 секунд бегаешь быстрее.": "Coffee! You run faster for 15 seconds."
 }

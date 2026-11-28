@@ -27,6 +27,7 @@ var curse_t := 0.0
 var duo = null  # сундук/корова на двоих, за который держимся
 var duo_lifted := false
 var _cam_base := 1.6
+var coffee_t := 0.0  # кофе: бежим быстрее
 
 
 func fun():
@@ -354,6 +355,9 @@ func _physics_process(delta: float) -> void:
 	dir.y = 0
 	dir = dir.normalized() * inp.length()
 	var spd := SPEED * (1.0 + 0.25 * Game.lvl("shoes"))
+	if coffee_t > 0.0:
+		coffee_t -= delta
+		spd *= 1.4
 	for b in stack:
 		if is_instance_valid(b) and b.box_type == "heavy":
 			spd *= 0.55  # тяжёлый ящик: еле тащишь

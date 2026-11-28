@@ -92,6 +92,7 @@ var hud_tut: Label
 var hud_help: Label
 var cat  # кот на стойке (scripts/cat.gd)
 var returns  # стол возвратов (scripts/returns.gd)
+var extras  # кофемашина, камера, лежанка (scripts/extras.gd)
 var _pad_was := false
 var pause_panel: PanelContainer
 var shop_panel: PanelContainer
@@ -167,6 +168,9 @@ func _ready() -> void:
 		seed(Net.seed_value)  # у всех одинаковый склад
 	else:
 		randomize()
+	if "--allup" in OS.get_cmdline_args():
+		for id in Game.UPGRADES:
+			Game.upgrades[id] = Game.UPGRADES[id][2]
 	for a in OS.get_cmdline_args():
 		if a.begins_with("--day="):
 			Game.day = int(a.substr(6))
@@ -213,6 +217,9 @@ func _ready() -> void:
 	returns.name = "Returns"
 	add_child(returns)
 	returns.setup(self)
+	extras = load("res://scripts/extras.gd").new()
+	add_child(extras)
+	extras.setup(self)
 
 	_play_music()
 	Sfx.set_ambient(true)
@@ -253,6 +260,8 @@ func _ready() -> void:
 		_cat_test()
 	if "--rettest" in OS.get_cmdline_args():
 		_ret_test()
+	if "--uptest" in OS.get_cmdline_args():
+		_up_test()
 	for a in OS.get_cmdline_args():
 		if a.begins_with("--showcase="):
 			var sc = load("res://scripts/showcase.gd").new()
@@ -2268,7 +2277,12 @@ func _refresh_shop() -> void:
 		return
 	var grid := GridContainer.new()
 	grid.columns = 2
-	shop_box.add_child(grid)
+	# улучшений много: список прокручивается (колесо, стик, перетаскивание)
+	var sc := ScrollContainer.new()
+	sc.rect_min_size = Vector2(530, 214)
+	sc.scroll_horizontal_enabled = false
+	shop_box.add_child(sc)
+	sc.add_child(grid)
 	var fsm: DynamicFont = font_big.duplicate()
 	fsm.size = 10
 	for id in Game.ORDER:
@@ -4636,4 +4650,27 @@ func _ret_test() -> void:
 	_save(dir + "/ret_stamp.png")
 	yield(get_tree().create_timer(1.5), "timeout")
 	print("RET money=", money, " box gone=", not is_instance_valid(p))
+	get_tree().quit()
+
+
+func _drink_coffee(_b) -> void:
+	extras.drink()
+
+
+func _up_test() -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	yield(get_tree().create_timer(2.0), "timeout")
+	player.global_transform.origin = Vector3(5.4, 0.05, -1.6)
+	player.rotation.y = PI + 0.3
+	player.cam.rotation.x = -0.2
+	yield(get_tree().create_timer(1.0), "timeout")
+	_save(dir + "/up_counter.png")
+	_drink_coffee(null)
+	print("coffee_t=", player.coffee_t, " belt=", fun.belt_speed())
+	Game.bank = 5000
+	Game.upgrades = {}
+	is_open = false
+	_open_laptop(null)
+	yield(get_tree().create_timer(1.0), "timeout")
+	_save(dir + "/up_shop.png")
 	get_tree().quit()
