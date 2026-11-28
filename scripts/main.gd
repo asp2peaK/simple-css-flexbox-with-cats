@@ -94,6 +94,7 @@ var cat  # кот на стойке (scripts/cat.gd)
 var returns  # стол возвратов (scripts/returns.gd)
 var extras  # кофемашина, камера, лежанка (scripts/extras.gd)
 var story  # письма владельца (scripts/story.gd)
+var rare  # редкие события смены (scripts/rare.gd)
 var _pad_was := false
 var pause_panel: PanelContainer
 var shop_panel: PanelContainer
@@ -224,6 +225,9 @@ func _ready() -> void:
 	story = load("res://scripts/story.gd").new()
 	add_child(story)
 	story.setup(self)
+	rare = load("res://scripts/rare.gd").new()
+	add_child(rare)
+	rare.setup(self)
 
 	_play_music()
 	Sfx.set_ambient(true)
@@ -268,6 +272,9 @@ func _ready() -> void:
 		_up_test()
 	if "--storytest" in OS.get_cmdline_args():
 		_story_test()
+	for a in OS.get_cmdline_args():
+		if a.begins_with("--rare="):
+			_rare_test(a.substr(7))
 	for a in OS.get_cmdline_args():
 		if a.begins_with("--showcase="):
 			var sc = load("res://scripts/showcase.gd").new()
@@ -1234,6 +1241,7 @@ func _spawn_customer() -> void:
 	var target := Vector3(SLOTS[slot] + rand_range(-0.4, 0.4), 0, 0.9)
 	c.set_meta("target", target)
 	returns.maybe_mark(c, kind)
+	rare.on_spawn(c)
 	c.walk_to(target, "arrive")
 	c.net_id = spawned
 	if Net.active:
@@ -1571,7 +1579,9 @@ func _on_face_hit(c) -> void:
 	hits += 1
 	Ach.unlock("ACH_FACE_HIT")
 	stat("orc_hit" if c.kind == "orc" else "hit")
-	if Game.event == "inspector":
+	if rare.on_face_hit():
+		pass
+	elif Game.event == "inspector":
 		money = int(max(0, money - 15))
 		_flash(tr("Инспектор всё видел! -15 монет"), 2.0)
 	elif c.kind == "orc":
@@ -1740,6 +1750,10 @@ func _deliver(p, c, penalty: int) -> void:
 		earned = 2
 		extra = tr("  (испорчено, почти ничего)")
 	earned = int(max(1, earned))
+	var vipb: int = rare.vip_bonus(c, earned)
+	if vipb > 0:
+		earned += vipb
+		extra += tr("  (VIP: втройне!)")
 	money += earned
 	served += 1
 	Ach.add("delivered")
@@ -4611,6 +4625,59 @@ remote func net_pet_cat_fx() -> void:
 	if cat and cat.has_method("pet") and get_tree().get_rpc_sender_id() == 1:
 		cat.bounce = 1.0
 		cat._heart()
+
+
+func _rare_test(ev: String) -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	yield(get_tree().create_timer(1.0), "timeout")
+	match ev:
+		"inspector":
+			player.global_transform.origin = Vector3(3.0, 0.05, -0.6)
+			player.rotation.y = -PI * 0.7
+		"rats":
+			player.global_transform.origin = Vector3(3.5, 0.05, -3.0)
+			player.rotation.y = -PI * 0.6
+		"flood":
+			player.global_transform.origin = Vector3(0.5, 0.05, -0.9)
+			player.cam.rotation.x = -0.45
+	yield(get_tree().create_timer(6.0), "timeout")
+	_save(dir + "/rare_%s_1.png" % ev)
+	match ev:
+		"inspector":
+			rare.on_throw()
+			print("insp bad=", rare.insp_bad, " money=", money, " watching=", rare.watching())
+		"rats":
+			yield(get_tree().create_timer(5.0), "timeout")
+			_save(dir + "/rare_rats_2.png")
+			for r in rare.rats:
+				print("rat ", r[2], " carry=", r[1] != null)
+		"flood":
+			for q in rare.puddles:
+				print("puddle ", q[0].global_transform.origin, " tex=", q[0].texture, " vis=", q[0].is_visible_in_tree())
+			var pd = rare.puddles[0]
+			player.global_transform.origin = pd[1] + Vector3(0, 0.05, 0.5)
+			Input.action_press("move_forward")
+			yield(get_tree().create_timer(0.5), "timeout")
+			Input.action_release("move_forward")
+			print("stun=", player.stun_t)
+			_save(dir + "/rare_flood_2.png")
+		"mimic":
+			var n := 0
+			for p in parcels:
+				if is_instance_valid(p) and p.box_type == "mimic":
+					n += 1
+			print("mimics=", n)
+		"vip":
+			for c in customers.duplicate():
+				c.leave_with("test", true)
+			yield(get_tree().create_timer(14.0), "timeout")
+			var v := 0
+			for c in customers:
+				if is_instance_valid(c) and c.has_meta("vip"):
+					v += 1
+			print("vip customers=", v, " vip_next=", rare.vip_next)
+			_save(dir + "/rare_vip_2.png")
+	get_tree().quit()
 
 
 func _cat_test() -> void:

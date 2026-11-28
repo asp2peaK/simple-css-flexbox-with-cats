@@ -705,5 +705,21 @@
  "Работник!\n\nТы сделал это. Почтмейстер прислал мне цветы. Чёрные, но цветы.\n\nПункт теперь твой. Я оставлю себе только 90% прибыли, потому что я щедрый дракон.\n\nКота всё равно не продавай.": "Worker!\n\nYou did it. The Postmaster sent me flowers. Black ones, but flowers.\n\nThe point is yours now. I'll keep only 90% of the profit, because I am a generous dragon.\n\nStill, don't sell the cat.",
  "[ЛКМ/E] Письмо от владельца сети": "[LMB/E] Letter from the network owner",
  "Златочешуй,\nвладелец сети": "Goldscale,\nnetwork owner",
- "Закрыть": "Close"
+ "Закрыть": "Close",
+ "ПРОВЕРКА! Инспектор смотрит: не швыряй коробки и не попадай в лицо": "INSPECTION! The inspector is watching: no throwing boxes, no face hits",
+ "КРЫСЫ! Тащат коробки в нору. Догони — бросят": "RATS! They're dragging boxes to their hole. Chase them and they'll drop it",
+ "ПОТОП! Лужи на складе: не наступай, поскользнёшься": "FLOOD! Puddles in the storeroom: step in one and you'll slip",
+ "Одна из коробок на полке — МИМИК!": "One of the boxes on the shelves is a MIMIC!",
+ "VIP-клиент! Платит втрое, но ждать не любит": "VIP customer! Pays triple, but hates waiting",
+ "Инспектор доволен: нарушений нет. +25 монет": "The inspector is pleased: no violations. +25 coins",
+ "Инспектор ушёл. Нарушений: %d": "The inspector left. Violations: %d",
+ "Инспектор: «Швырять посылки запрещено!» -5": "Inspector: \"Throwing parcels is forbidden!\" -5",
+ "Коробки на полу.": "Boxes on the floor.",
+ "Крыса утащила коробку в угол у норы!": "A rat dragged a box to the corner by its hole!",
+ "Образцовый пункт. Так и запишу.": "An exemplary pickup point. I'll note that.",
+ "Поймал! Крыса бросила коробку.": "Got it! The rat dropped the box.",
+ "Поскользнулся!": "You slipped!",
+ "Проверка. Работайте, работайте...": "Inspection. Keep working, keep working...",
+ "Я всё записал!": "I wrote it all down!",
+ "  (VIP: втройне!)": "  (VIP: triple!)"
 }

@@ -266,6 +266,8 @@ func release(throw: bool, scatter := false) -> void:
 			p.angular_velocity = Vector3.ZERO
 	if throw:
 		var force: float = lerp(THROW_MIN, THROW_MAX, charge)
+		if get_parent().get("rare"):
+			get_parent().rare.on_throw()
 		p.thrown = true
 		p.set_meta("thrower", Net.my_id())
 		Sfx.play("whoosh", 0.1, linear2db(lerp(0.4, 1.0, charge)))
