@@ -737,5 +737,10 @@
  "Моды выключены (--nomods)": "Los mods están desactivados (--nomods)",
  "Модов пока нет. Положи мод в папку mods рядом с игрой или в папку ниже. Как их делать, написано в MODDING.md.": "Aún no hay mods. Pon un mod en la carpeta mods junto al juego o en la carpeta de abajo. En MODDING.md se explica cómo hacerlos.",
  "Открыть папку модов": "Abrir carpeta de mods",
- "Сначала поставь то, что несёшь (ПКМ — вернуть на место).": "Primero deja lo que llevas (RMB lo devuelve a su sitio)."
+ "Сначала поставь то, что несёшь (ПКМ — вернуть на место).": "Primero deja lo que llevas (RMB lo devuelve a su sitio).",
+ "Моды со скриптами могут делать на компьютере что угодно. Ставь только те, которым доверяешь.": "Los mods con scripts pueden hacer cualquier cosa en tu PC. Instala solo los que sean de confianza.",
+ "скрипт": "script",
+ "достижения выкл.": "logros desactivados",
+ "С модами-скриптами и паками достижения и рекорды не засчитываются. Переводы, фразы и картинки на них не влияют.": "Con mods de scripts o paquetes de recursos, los logros y récords no cuentan. Las traducciones, frases e imágenes no afectan a esto.",
+ "Дракон Златочешуй листает книгу учёта: «Хм, цифры какие-то подозрительные...»\nСейв правили вручную: играть можно, но достижения и рекорды выключены.": "El dragón Escamadorada hojea el libro de cuentas: «Mmm, estas cifras huelen raro...»\nLa partida se editó a mano: puedes jugar, pero los logros y récords están desactivados."
 }

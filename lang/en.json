@@ -737,5 +737,10 @@
  "Моды выключены (--nomods)": "Mods are disabled (--nomods)",
  "Модов пока нет. Положи мод в папку mods рядом с игрой или в папку ниже. Как их делать, написано в MODDING.md.": "No mods yet. Put a mod into the mods folder next to the game or into the folder below. MODDING.md explains how to make them.",
  "Открыть папку модов": "Open mods folder",
- "Сначала поставь то, что несёшь (ПКМ — вернуть на место).": "Put down what you're carrying first (RMB puts it back)."
+ "Сначала поставь то, что несёшь (ПКМ — вернуть на место).": "Put down what you're carrying first (RMB puts it back).",
+ "Моды со скриптами могут делать на компьютере что угодно. Ставь только те, которым доверяешь.": "Script mods can do anything on your computer. Only install the ones you trust.",
+ "скрипт": "script",
+ "достижения выкл.": "achievements off",
+ "С модами-скриптами и паками достижения и рекорды не засчитываются. Переводы, фразы и картинки на них не влияют.": "With script mods or resource packs, achievements and records don't count. Translations, lines and pictures don't affect this.",
+ "Дракон Златочешуй листает книгу учёта: «Хм, цифры какие-то подозрительные...»\nСейв правили вручную: играть можно, но достижения и рекорды выключены.": "Goldscale the dragon flips through the ledger: \"Hmm, these numbers look fishy...\"\nThe save was edited by hand: you can play, but achievements and records are off."
 }

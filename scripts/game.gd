@@ -2,7 +2,7 @@ extends Node
 # Состояние игры между сменами (автозагрузка Game): день, касса, улучшения, сохранение.
 
 const SAVE_PATH := "user://save.json"
-const VERSION := "0.15.1"
+const VERSION := "0.15.2"
 # демоверсия: экспорт с фичей "demo" (пресеты "* Demo") или запуск с --demo
 const DEMO_DAYS := 3
 const STORE_APP_ID := 0  # App ID полной версии в Steam, когда появится
@@ -62,6 +62,8 @@ var shelf_pos := {}  # куда передвинут стеллаж: "номер
 var letter_colors := {}  # перекрашенные секции: "буква" -> номер цвета в палитре
 var last_reviews := []  # отзывы прошлой смены (для доски объявлений)
 var chaos_best := 0
+var tampered := false  # сейв правили руками: достижения и рекорды выключены (сама игра работает)
+const SAVE_SALT := "np-ledger-7f3a"
 var _backup := {}
 
 const CAREER_DAYS := 30
@@ -155,7 +157,8 @@ func end_chaos(score: int) -> void:
 	for k in _backup:
 		set(k, _backup[k])
 	_backup = {}
-	chaos_best = int(max(chaos_best, score))
+	if records_ok():
+		chaos_best = int(max(chaos_best, score))
 	save_game()
 
 
@@ -231,6 +234,7 @@ func roll_event() -> void:
 
 func new_game(p_hardcore := false) -> void:
 	hardcore = p_hardcore
+	tampered = false  # новая карьера — честный лист
 	day = 1
 	bank = 0
 	upgrades = {}
@@ -251,6 +255,11 @@ func new_game(p_hardcore := false) -> void:
 	last_reviews = []
 
 
+# можно ли засчитывать достижения и рекорды: без модов, меняющих игру, и без правки сейва
+func records_ok() -> bool:
+	return not tampered and not Mods.affects_play()
+
+
 func has_save() -> bool:
 	return File.new().file_exists(SAVE_PATH)
 
@@ -263,12 +272,14 @@ func save_game() -> void:
 	var f := File.new()
 	if f.open(SAVE_PATH, File.WRITE) != OK:
 		return
-	f.store_string(to_json({"day": day, "bank": bank, "upgrades": upgrades,
+	var txt := to_json({"day": day, "bank": bank, "upgrades": upgrades,
 		"seen_kinds": seen_kinds, "tutorial_done": tutorial_done, "rep": rep, "tokens": tokens,
 		"decor": decor, "record": record, "tasks": tasks, "tasks_day": tasks_day,
 		"career_done": career_done, "chaos_best": chaos_best, "decor_pos": decor_pos,
 		"shelf_pos": shelf_pos, "letter_colors": letter_colors,
-		"last_reviews": last_reviews, "hardcore": hardcore, "hc_best": hc_best}))
+		"last_reviews": last_reviews, "hardcore": hardcore, "hc_best": hc_best, "tampered": tampered})
+	# подпись в конце файла: если сейв подправят руками, игра заметит (и ничего не сломает)
+	f.store_string(txt + "\n#" + (txt + SAVE_SALT).sha256_text())
 	f.close()
 
 
@@ -276,10 +287,22 @@ func load_game() -> bool:
 	var f := File.new()
 	if not f.file_exists(SAVE_PATH) or f.open(SAVE_PATH, File.READ) != OK:
 		return false
-	var d = parse_json(f.get_as_text())
+	var raw := f.get_as_text()
 	f.close()
+	var txt := raw
+	var sig := ""
+	var cut := raw.rfind("\n#")
+	if cut >= 0:
+		txt = raw.substr(0, cut)
+		sig = raw.substr(cut + 2).strip_edges()
+	var d = parse_json(txt)
 	if typeof(d) != TYPE_DICTIONARY:
 		return false
+	tampered = bool(d.get("tampered", false))
+	if sig != "" and sig != (txt + SAVE_SALT).sha256_text():
+		tampered = true
+	elif sig == "" and bool(d.get("tampered", null) != null):
+		tampered = true  # подписанный раньше сейв без подписи: подпись стёрли
 	day = int(d.get("day", 1))
 	bank = int(d.get("bank", 0))
 	upgrades = d.get("upgrades", {})

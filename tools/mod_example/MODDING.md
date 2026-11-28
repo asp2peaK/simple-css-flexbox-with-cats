@@ -16,6 +16,8 @@ mods/
     mod.json        name, author, version, description
     lines.json      extra customer lines (optional)
     lang/xx.json    translations, or a whole new language (optional)
+    replace/...     your own pictures and sounds (optional)
+    main.gd         your own code (optional)
 ```
 
 `mod.json`:
@@ -57,7 +59,62 @@ for the full list of keys. Keep `%s`, `%d`, `\n` and LMB/RMB tokens as they are.
 Note: signs, boxes and neon use the English textures for every language except Russian.
 Chinese, Japanese and Korean need a font mod (see below) until the game ships a CJK font.
 
-## 2. Resource pack (.pck / .zip): replace art, sounds, scripts
+### replace/: new pictures and sounds without any tools
+
+Put a file at the same path as in the game, under `replace/`. For example
+`replace/assets/chars/orc_idle.png` replaces the orc standing at the counter, and
+`replace/assets/sfx/doorbell.wav` replaces the door bell. Supported: png, jpg, wav (PCM 8/16-bit), ogg.
+Keep the same picture size as the original so it lines up. Customers have frames like
+`<kind>_idle`, `_happy`, `_angry`, `_walk`, `_walk2`, `_back`, `_back_walk`.
+
+## 2. Script mods (main.gd): write your own code
+
+Like BepInEx mods for other games, a `main.gd` in your mod folder runs inside the game.
+It is GDScript (Godot 3.6, very close to Python). It must start with `extends Node`.
+
+```gdscript
+extends Node
+
+var api
+
+func _mod_ready(mods_api, dir):
+	api = mods_api
+	api.connect("customer_spawned", self, "_on_customer")
+	api.connect("parcel_delivered", self, "_on_delivered")
+
+func _on_customer(main, customer):
+	if customer.kind == "orc":
+		customer.scale = Vector3.ONE * 1.6   # huge orcs
+
+func _on_delivered(main, parcel, customer):
+	api.add_money(1)                      # every parcel gives a tip
+```
+
+Events you can connect to (`api.connect("name", self, "method")`):
+
+| Event | Arguments | When |
+|---|---|---|
+| `menu_ready` | menu | main menu opened |
+| `level_ready` | main | the pickup point scene is built |
+| `shift_started` | main | the point opens |
+| `shift_ended` | main | the shift is over |
+| `customer_spawned` | main, customer | a customer walks in |
+| `parcel_delivered` | main, parcel, customer | you handed over a parcel |
+
+Helpers on `api`: `flash(text, seconds)`, `add_money(n)`, `add_line(kind, text, lang)`,
+`load_file(path)` (png/jpg/wav/ogg from disk), `replace(res_path, resource)`,
+`api.main` (the current scene or null). Your node also gets `_process(delta)` and `_input(event)`
+like any Godot node, so you can add your own objects, HUD, keys and rules.
+
+Useful things on `main`: `money`, `customers`, `parcels`, `player`, `is_open`, `shift_over`,
+`_flash(text, sec)`. Global singletons: `Game` (day, bank, upgrades), `Settings`, `Sfx`.
+Read the game's scripts to find more; everything is open to mods.
+Errors go to the log: Settings, Logs folder.
+
+Script mods can do anything on the player's computer, so only install mods you trust.
+In co-op every player should have the same mods.
+
+## 3. Resource pack (.pck / .zip): replace art, sounds, scripts
 
 Anything in the game can be replaced: textures, sounds, music, fonts, even scripts.
 
@@ -71,4 +128,4 @@ Anything in the game can be replaced: textures, sounds, music, fonts, even scrip
 The paths must match exactly. Replacing scripts works but can break with game updates, so prefer
 replacing assets.
 
-A ready-made folder example is in `example_mod/` (it is switched off by `"disabled": true`).
+Ready-made examples: `example_mod/` (lines and a language) and `script_mod/` (code). Both are switched off by `"disabled": true`; delete that line to turn one on.

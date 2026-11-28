@@ -39,7 +39,8 @@ func build(m) -> void:
 	main._clickable(fr, Vector3(0.53, 1.15, 0.06), tr("[ЛКМ/E] Зеркало: сменить внешность"), "_open_mirror")
 	vp = Viewport.new()
 	vp.size = Vector2(204, 360)
-	vp.render_target_v_flip = true
+	# v_flip у вьюпорта в GLES2 переворачивает и порядок вершин: пол и стойка пропадали из отражения.
+	# Поэтому картинку переворачиваем в материале стекла (uv по Y)
 	vp.render_target_update_mode = Viewport.UPDATE_ALWAYS
 	vp.shadow_atlas_size = 0
 	vp.msaa = Viewport.MSAA_DISABLED
@@ -55,8 +56,8 @@ func build(m) -> void:
 	var gm := SpatialMaterial.new()
 	gm.flags_unshaded = true
 	gm.albedo_texture = vp.get_texture()
-	gm.uv1_scale = Vector3(-1, 1, 1)
-	gm.uv1_offset = Vector3(1, 0, 0)
+	gm.uv1_scale = Vector3(-1, -1, 1)
+	gm.uv1_offset = Vector3(1, 1, 0)
 	gm.albedo_color = Color(0.92, 0.95, 1.0)
 	glass.material_override = gm
 	glass.translation = Vector3(0, GLASS_Y, -0.01)
@@ -69,6 +70,9 @@ func build(m) -> void:
 	doll.set_look(Settings.look)
 	if main.player and main.player.cam:
 		main.player.cam.cull_mask = main.player.cam.cull_mask & ~2
+	# камеру зеркала ставим последней в кадре, когда игрок (или камера трейлера) уже сдвинут:
+	# иначе отражение отстаёт на кадр и дёргается
+	process_priority = 1000
 
 
 func _process(_d: float) -> void:
@@ -100,7 +104,7 @@ func _process(_d: float) -> void:
 	var ox: float = rel.dot(b.x) * k
 	var oy: float = rel.dot(b.y) * k
 	cam.keep_aspect = Camera.KEEP_WIDTH
-	cam.set_frustum(GW * k, Vector2(ox, -oy), nr, 40.0)
+	cam.set_frustum(GW * k, Vector2(ox, oy), nr, 40.0)
 
 
 # ---------------------------------------------------------------- редактор

@@ -1,0 +1,7 @@
+{
+ "name": "Tips and big orcs",
+ "author": "2peaK's Studio",
+ "version": "1.0",
+ "description": "Example script mod: customers leave a 1 coin tip, orcs are huge. Delete \"disabled\" to turn it on.",
+ "disabled": true
+}

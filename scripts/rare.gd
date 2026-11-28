@@ -276,10 +276,23 @@ func _rat_drop(r) -> void:
 
 # ---------------------------------------------------------------- лужи
 func _spawn_puddles() -> void:
-	var spots := [Vector3(0, 0.02, -2.0), Vector3(-2.2, 0.02, -2.8), Vector3(2.4, 0.02, -1.6), Vector3(0.8, 0.02, -5.6)]
-	spots.shuffle()
+	# лужи только на свободном полу: не под раскладушкой, стеллажами, декором и мебелью
+	var spots := [Vector3(0, 0.02, -2.0), Vector3(-2.2, 0.02, -2.8), Vector3(2.4, 0.02, -1.6)]
+	for z in [-2.2, -3.0, -3.8, -4.6]:
+		for x in [-3.6, -1.8, 0.0, 1.8, 3.6]:
+			spots.append(Vector3(x, 0.02, z))
+	var first := spots.slice(0, 2)
+	var rest := spots.slice(3, spots.size() - 1)
+	first.shuffle()
+	rest.shuffle()
+	spots = first + rest
 	var tex: Texture = load("res://assets/props/puddle.png") if ResourceLoader.exists("res://assets/props/puddle.png") else null
-	for k in 3:
+	var placed := []
+	for sp in spots:
+		if placed.size() >= 3:
+			break
+		if not _floor_free(sp, placed):
+			continue
 		var s := Sprite3D.new()
 		if tex:
 			s.texture = tex
@@ -287,8 +300,29 @@ func _spawn_puddles() -> void:
 		s.axis = Vector3.AXIS_Y  # лежит на полу
 		s.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
 		main.add_child(s)
-		s.global_transform.origin = spots[k]
-		puddles.append([s, spots[k]])
+		s.global_transform.origin = sp
+		puddles.append([s, sp])
+		placed.append(sp)
+	print("puddles at ", placed)
+
+
+func _floor_free(p: Vector3, placed: Array) -> bool:
+	for q in placed:
+		if Vector2(p.x - q.x, p.z - q.z).length() < 1.6:
+			return false
+	var box := BoxShape.new()
+	box.extents = Vector3(0.75, 0.6, 0.6)  # лужа 1.3 м + запас, по высоте до ~1.2 м
+	var q := PhysicsShapeQueryParameters.new()
+	q.set_shape(box)
+	q.transform = Transform(Basis(), p + Vector3(0, 0.65, 0))
+	q.collision_mask = 1
+	q.collide_with_areas = false
+	for hit in main.get_world().direct_space_state.intersect_shape(q, 8):
+		var c = hit.collider
+		if c == main.player or c is RigidBody or c is KinematicBody:
+			continue  # игрок, коробки и клиенты двигаются, им можно
+		return false
+	return true
 
 
 func _update_puddles(delta: float) -> void:

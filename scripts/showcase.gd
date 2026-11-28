@@ -277,7 +277,8 @@ func mirror() -> void:
 			Settings.owned.append(id)
 	m.mirror.doll.set_look(Settings.look)
 	var mp: Vector3 = m.mirror.global_transform.origin
-	_dolly(mp + Vector3(0.5, 0.05, 2.2), mp + Vector3(0, 1.2, 0), mp + Vector3(0.25, 0.05, 1.6), mp + Vector3(0, 1.2, 0))
+	# встаём прямо перед зеркалом: отражение по центру, без задника стеллажа
+	_dolly(mp + Vector3(0.12, 0.05, 1.9), mp + Vector3(0, 1.25, 0), mp + Vector3(0.0, 0.05, 1.25), mp + Vector3(0, 1.25, 0))
 	_start()
 	if still != "":
 		yield(_wait(0.3), "timeout")

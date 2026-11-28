@@ -263,6 +263,10 @@ func _ready() -> void:
 		_enter_closed()
 	else:
 		_begin_shift()
+	Mods.on_level(self)
+	if Game.tampered and Game.mode == "career" and not Game.has_meta("tamper_told"):
+		Game.set_meta("tamper_told", true)
+		_flash(tr("Дракон Златочешуй листает книгу учёта: «Хм, цифры какие-то подозрительные...»\nСейв правили вручную: играть можно, но достижения и рекорды выключены."), 6.0)
 	if Net.active:
 		hud_event.text = (tr("ХОСТ") if Net.is_host else tr("КООП")) + tr(": игроков %d") % (Net.peers.size() + 1)
 		_send_look_later()
@@ -1328,6 +1332,7 @@ func _spawn_customer() -> void:
 	rare.on_spawn(c)
 	c.walk_to(target, "arrive")
 	c.net_id = spawned
+	Mods.emit_signal("customer_spawned", self, c)
 	if Net.active:
 		rpc("net_customer", c.net_id, kind, p.code, line, slot, pat, target, c.scammer, c.fake, c.receipt_code)
 	_refresh_hud()
@@ -1773,6 +1778,7 @@ func _deliver(p, c, penalty: int) -> void:
 	var tw := create_tween()
 	tw.tween_property(p, "global_transform:origin", c.global_transform.origin + Vector3(0, 1.0, 0), 0.4)
 	tw.tween_callback(self, "_free_parcel", [p])
+	Mods.emit_signal("parcel_delivered", self, p, c)
 	if tut_step >= 0 and tut_step < 3:
 		tut_step = 3
 	if c.scammer:
@@ -1895,6 +1901,7 @@ func _end_shift() -> void:
 	if shift_over or net_client():
 		return
 	shift_over = true
+	Mods.emit_signal("shift_ended", self)
 	Sfx.play("shift_end", 0.0, -2.0)
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	var stars := 3
@@ -2823,6 +2830,7 @@ func _begin_shift() -> void:
 	# пункт открыт: пошли клиенты и поставки
 	Game.phase = "open"
 	is_open = true
+	Mods.emit_signal("shift_started", self)
 	if Game.mode == "career":
 		if Game.district_idx() >= 1:
 			Ach.unlock("ACH_DISTRICT_2")
@@ -4688,6 +4696,12 @@ func _mirrortest() -> void:
 		player.cam.rotation.x = 0.0
 		yield(get_tree().create_timer(0.6), "timeout")
 		_save(dir + "/mirror_%s.png" % str(dist))
+	# что за спиной (то, что должно отражаться)
+	player.global_transform.origin = Vector3(mp.x, 0.05, mp.z + 1.25)
+	player.rotation.y = PI
+	player.cam.rotation.x = -0.35
+	yield(get_tree().create_timer(0.6), "timeout")
+	_save(dir + "/mirror_behind.png")
 	get_tree().quit()
 
 
@@ -4994,8 +5008,9 @@ func _hardcore_fired() -> void:
 	Sfx.play("shift_end", 0.0, -2.0)
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	var reached := Game.day
-	var record := reached > Game.hc_best
-	Game.hc_best = max(Game.hc_best, reached)
+	var record := reached > Game.hc_best and Game.records_ok()
+	if Game.records_ok():
+		Game.hc_best = max(Game.hc_best, reached)
 	# карьера сначала, рекорд остаётся
 	var best := Game.hc_best
 	Game.new_game(true)

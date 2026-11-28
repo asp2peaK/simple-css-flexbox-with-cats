@@ -116,6 +116,8 @@ func add(key: String, n := 1) -> void:
 func unlock(id: String) -> void:
 	if got.has(id) or info(id).empty():
 		return
+	if not Game.records_ok():
+		return  # моды со скриптами/паки или правка сейва: достижения не даём
 	got[id] = OS.get_unix_time()
 	_save()
 	if steam:

@@ -141,11 +141,20 @@ func _ready() -> void:
 	add_child(nb)
 	var mb := Button.new()
 	mb.text = tr("Моды") + (" (%d)" % Mods.mods.size() if Mods.mods.size() > 0 else "")
+
 	mb.theme = box.theme
 	mb.add_font_override("font", font_big)
 	mb.rect_position = Vector2(8, 304)
 	mb.connect("pressed", self, "_mods")
 	add_child(mb)
+	if Mods.affects_play() or Game.tampered:
+		var al := Label.new()
+		al.text = tr("достижения выкл.")
+		al.add_font_override("font", font_big)
+		al.add_color_override("font_color", Color(1, 0.55, 0.4))
+		al.rect_position = Vector2(10, 288)
+		add_child(al)
+	Mods.call_deferred("on_menu", self)
 
 	var help := Label.new()
 	help.add_font_override("font", font_big)
@@ -207,7 +216,7 @@ func _ready() -> void:
 		get_tree().quit()
 	if "--modspanel" in OS.get_cmdline_args():
 		_mods()
-		print("MODLINES orc/ru: ", Mods.lines_for("orc", "ru"), " pl: ", tr("Новая игра"), " langs: ", Settings.LANGS)
+		print("MODLINES orc/ru: ", Mods.lines_for("orc", "ru"), " langs: ", Settings.LANGS, " tampered=", Game.tampered, " bank=", Game.bank, " records_ok=", Game.records_ok())
 	if "--menushot" in OS.get_cmdline_args():
 		yield(get_tree().create_timer(1.0), "timeout")
 		var img := get_viewport().get_texture().get_data()
@@ -270,6 +279,10 @@ func _mods() -> void:
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(list)
 	var lines := []
+	if Mods.affects_play():
+		lines.append("! " + tr("С модами-скриптами и паками достижения и рекорды не засчитываются. Переводы, фразы и картинки на них не влияют."))
+	if Mods.scripts.size() > 0:
+		lines.append("! " + tr("Моды со скриптами могут делать на компьютере что угодно. Ставь только те, которым доверяешь."))
 	if Mods.disabled:
 		lines.append(tr("Моды выключены (--nomods)"))
 	elif Mods.mods.empty():
@@ -280,6 +293,8 @@ func _mods() -> void:
 			s += " v" + m.version
 		if m.author != "":
 			s += "  (" + m.author + ")"
+		if m.has("script"):
+			s += "  [" + tr("скрипт") + "]"
 		if m.description != "":
 			s += "\n   " + m.description
 		lines.append(s)

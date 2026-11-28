@@ -3,6 +3,10 @@ extends Reference
 # Новая версия — добавь запись в начало списка (не больше 5 штук показываем).
 
 const NEWS := [
+	["0.15.2", "Моды с кодом",
+		"- Моды со скриптами: пиши свой код на GDScript (main.gd), подписывайся на события игры и меняй правила.\n- Свои картинки и звуки без Godot: папка replace в моде.\n- Примеры модов и инструкция в папке mods.\n- С модами-скриптами достижения и рекорды не засчитываются.\n- Зеркало снова отражает пол и стойку и больше не дёргается.\n- Лужи при потопе не появляются под мебелью.",
+		"Script mods",
+		"- Script mods: write your own GDScript (main.gd), hook into game events and change the rules.\n- Your own pictures and sounds without Godot: the replace folder in a mod.\n- Example mods and a guide in the mods folder.\n- Script mods turn off achievements and records.\n- The mirror reflects the floor and counter again and no longer jitters.\n- Flood puddles no longer appear under furniture."],
 	["0.15.1", "Моды и полировка",
 		"- Поддержка модов: папка mods рядом с игрой, кнопка «Моды» в меню. Можно добавить язык, фразы клиентов или заменить любую картинку и звук.\n- Новая шкала терпения над клиентами с рожицами.\n- Значок улучшения «Краски».\n- Шлем орка и наушники теперь сидят как надо.\n- Аккуратные картинки на коробках возвратов.",
 		"Mods and polish",
